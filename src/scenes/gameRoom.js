@@ -4,7 +4,7 @@ import { getPlayerPositions, getPlayerHandPosition} from '../models/playerPositi
 import PlayerTypes from '../models/playerTypes'
 import io from 'socket.io-client';
 
-export default class Game extends Phaser.Scene {
+export default class GameRoom extends Phaser.Scene {
     constructor() {
         super({
             key: 'Game'
@@ -112,9 +112,57 @@ export default class Game extends Phaser.Scene {
                     duration: 250 
                 });
             }
+
+
+            var bidContainer = self.createBidContainer(self);
+            bidContainer.setVisible(false); 
+
+            // clickButton.visible = false;
+            
+            timeline.setCallback('onComplete', () => {
+                console.log('TIMELINE COMPLETE!!')
+                receivingPlayerIndex = self.dealerIndex + 1 == 4 ? 0 : self.dealerIndex + 1;
+                if (self.playerList[receivingPlayerIndex].id === self.currentPlayer.id) {
+                    bidContainer.setVisible(true); 
+                }
+
+            });  
+
             timeline.play();
+
         });
     }
+
+    createBidContainer (self) {
+        var container = self.add.container(450, 275);
+        var rectangle = self.add.rectangle(0, 0, 300, 300, 0x6ae3ff);
+        const header = self.add.text(-100, -100, 'Would you like to bid?', { fill: '#000000', align: 'center' });
+
+        const pick70 = self.add.text(-80, -30, '70', { fill: '#000000' })
+          .setInteractive()
+          .on('pointerdown', () => console.log('70'));
+        const pick80 = self.add.text(-80, 0, '80', { fill: '#000000' })
+          .setInteractive()
+          .on('pointerdown', () => console.log('80'));
+        const pick90 = self.add.text(-80, 40, '90', { fill: '#000000' })
+          .setInteractive()
+          .on('pointerdown', () => console.log('90'));
+
+        const pick100 = self.add.text(0, -30, '100', { fill: '#000000' })
+          .setInteractive()
+          .on('pointerdown', () => console.log('100'));
+        const pick250 = self.add.text(0, 0, '250', { fill: '#000000' })
+          .setInteractive()
+          .on('pointerdown', () => console.log('250'));
+        const pickAskPartner = self.add.text(0, 40, 'Ask Partner', { fill: '#000000' })
+          .setInteractive()
+          .on('pointerdown', () => console.log('askPartner'));             
+       
+
+        container.add([rectangle, pick70, pick80, pick90, pick100, pick250, pickAskPartner, header]);
+        return container;
+    }
+
 
     beginGame() {
         //set player 1 as the dealer
