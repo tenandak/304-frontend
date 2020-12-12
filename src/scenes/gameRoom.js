@@ -1,5 +1,6 @@
-import Card from '../models/card';
+// import Card from '../models/card';
 import Player from '../models/player';
+import Game from '../models/game';
 import { getPlayerPositions, getPlayerHandPosition} from '../models/playerPositions';
 import PlayerTypes from '../models/playerTypes'
 import io from 'socket.io-client';
@@ -7,7 +8,7 @@ import io from 'socket.io-client';
 export default class GameRoom extends Phaser.Scene {
     constructor() {
         super({
-            key: 'Game'
+            key: 'GameRoom'
         });
         this.config = {
             width: 900,
@@ -24,20 +25,16 @@ export default class GameRoom extends Phaser.Scene {
     create() {
         let self = this;
         let config = this.config;
-        self.deck = this.add.group();
+        self.game = null;
         self.currentPlayer = null;
         self.playerObjs = {};
-        self.playerList = [];
-        self.dealerIndex = 0;
         self.playerPositions = getPlayerPositions(config);
+        // self.playerList = [];
+        // self.deck = this.add.group();
+        // self.dealerIndex = 0;
 
-        var style = { fontSize: "16px", fill: "#ffffff", align: "center", border: "1px solid #ffffff" };
-        var beforeGameText = self.add.text(config.width/3, config.height/2, 
-            'THE GAME WILL BEGIN WHEN \nFOUR PLAYERS HAVE ENTERED THE ROOM', style);
-        beforeGameText.setShadow(3, 3, 'rgba(0,0,0,0.5)', 2);
+        this.beforeGameHeader();
 
-
-        // this.socket = io('http://localhost:3000');
         this.socket = io('http://localhost:3000', {transports: ['websocket', 'polling', 'flashsocket']});
 
         this.socket.on('connect', function () {
@@ -63,22 +60,24 @@ export default class GameRoom extends Phaser.Scene {
             }
 
             if (players.length === 4) {
-                beforeGameText.destroy();
-                self.playerList = players;
-                self.beginGame();
+                self.beforeGameText.destroy();
+                var playerList = players.map(p => self.playerObjs[p.id]);
+
+                self.game = new Game(self, playerList, self.socket);
+                self.game.beginGame();
             }
 
         });
 
-        this.socket.on('dealCards', function (frames) {
+        this.socket.on('dealCards-old', function (frames) {
             console.log('create deck');
-            for (var i = 0; i < frames.length; i++) {
-                if (frames[i] !== 'back') {
-                    const card = self.add.sprite(450, 275, 'cards', frames[i]).setInteractive();
-                    card.setScale(0.5);
-                    self.deck.add(card);
-                }
-            }
+            // for (var i = 0; i < frames.length; i++) {
+            //     if (frames[i] !== 'back') {
+            //         const card = self.add.sprite(450, 275, 'cards', frames[i]).setInteractive();
+            //         card.setScale(0.5);
+            //         self.deck.add(card);
+            //     }
+            // }
 
             console.log('distribute deck');
             // start with the right from the dealer
@@ -114,7 +113,7 @@ export default class GameRoom extends Phaser.Scene {
             }
 
 
-            var bidContainer = self.createBidContainer(self);
+            var bidContainer = self.createBidContainer(self, false);
             bidContainer.setVisible(false); 
 
             // clickButton.visible = false;
@@ -133,7 +132,14 @@ export default class GameRoom extends Phaser.Scene {
         });
     }
 
-    createBidContainer (self) {
+    beforeGameHeader() {
+        var style = { fontSize: "16px", fill: "#ffffff", align: "center", border: "1px solid #ffffff" };
+        this.beforeGameText = this.add.text(this.config.width/3, this.config.height/2, 
+            'THE GAME WILL BEGIN WHEN \nFOUR PLAYERS HAVE ENTERED THE ROOM', style);
+        this.beforeGameText.setShadow(3, 3, 'rgba(0,0,0,0.5)', 2);
+    }
+
+    createBidContainer (self, isForced) {
         var container = self.add.container(450, 275);
         var rectangle = self.add.rectangle(0, 0, 300, 300, 0x6ae3ff);
         const header = self.add.text(-100, -100, 'Would you like to bid?', { fill: '#000000', align: 'center' });
@@ -164,23 +170,23 @@ export default class GameRoom extends Phaser.Scene {
     }
 
 
-    beginGame() {
-        //set player 1 as the dealer
-        if (this.currentPlayer.id === this.playerList[this.dealerIndex].id) {
-            this.currentPlayer.setPlayerType(PlayerTypes.DEALER);
-            var frames = this.shuffleDeck();
-            console.log('emitting deal cards');
-            this.socket.emit("dealCards", frames);
-            // this.distributeCards(frames);
-        }
-    }
+    // beginGame() {
+    //     //set player 1 as the dealer
+    //     if (this.currentPlayer.id === this.playerList[this.dealerIndex].id) {
+    //         this.currentPlayer.setPlayerType(PlayerTypes.DEALER);
+    //         var frames = this.shuffleDeck();
+    //         console.log('emitting deal cards');
+    //         this.socket.emit("dealCards", frames);
+    //         // this.distributeCards(frames);
+    //     }
+    // }
 
-    shuffleDeck() {
-        console.log('should only shuffle once');
-        var frames = this.textures.get('cards').getFrameNames();
-        Phaser.Utils.Array.Shuffle(frames);
-        return frames;
-    }
+    // shuffleDeck() {
+    //     console.log('should only shuffle once');
+    //     var frames = this.textures.get('cards').getFrameNames();
+    //     Phaser.Utils.Array.Shuffle(frames);
+    //     return frames;
+    // }
 
     distributeCards (frames) {
         // var config = this.config;
