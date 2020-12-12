@@ -10,7 +10,6 @@ export default class Game {
 		this.playerList = playerList;
 		this.socket = socket;
 		this.starterIndex = 0;
-
 		
 		this.teams = [];
 		// this.teams = createTeams(playerList);
@@ -19,17 +18,6 @@ export default class Game {
 
 	beginGame() {
 		this.rounds.push(this.createRound());
-
-
-
-        //set player 1 as the dealer
-        // if (this.currentPlayer.id === this.playerList[this.starterIndex].id) {
-            // this.currentPlayer.setPlayerType(PlayerTypes.DEALER);
-            // var frames = this.shuffleDeck();
-            // console.log('emitting deal cards');
-            // this.socket.emit("dealCards", frames);
-            // this.distributeCards(frames);
-        // }
     }
 
     createRound() {
@@ -38,7 +26,6 @@ export default class Game {
 
 
 	shuffleDeck() {
-        console.log('should only shuffle once');
         var frames = this.textures.get('cards').getFrameNames();
         Phaser.Utils.Array.Shuffle(frames);
         return frames;

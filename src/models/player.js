@@ -14,7 +14,7 @@ export default class Player {
 		
 		const fontSize = isCurrentPlayer ? 21 : 18;
 		const fontColour = isCurrentPlayer ? "#FFFFFF" : "#000000"
-		this.name = isCurrentPlayer ? player.name + '\n(You)' : player.name;
+		this.name = isCurrentPlayer ? player.name + ' (You)' : player.name;
 
 		this.playerHeading = scene.add.text(position.x, position.y, this.name, 
 			{fontSize: fontSize, fill: fontColour, align: "center"});

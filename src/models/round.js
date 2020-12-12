@@ -32,7 +32,7 @@ export default class Round {
 			for (var i = 0; i < frames.length; i++) {
 	            if (frames[i] !== 'back') {
 	                const card = self.scene.add.sprite(450, 275, 'cards', frames[i]).setInteractive();
-	                card.setScale(0.5);
+	                card.setScale(0.4);
 	                self.deck.add(card);
 	            }
         	}
@@ -41,24 +41,36 @@ export default class Round {
 	}
 
 	startRound() {
+		this.dealHalfDeck(0, 16, 0, () => {
+			console.log('NOW THE SECOND HALF');
+			this.dealHalfDeck(16, 32, 4);
+		});
+		//this.selectBidder
+		
+
+	}
+
+	dealHalfDeck(start, end, startHandPosition, onComplete) {
+		let self = this;
         const timeline = this.scene.tweens.createTimeline();
-        //PUT BACK self.deck.children.size
-        for (var i = 0; i < 16; i++) {
-            var handPosition = i % 4;
+        var j = 0;
+        for (var i = start; i < end; i++) {
+            var handPosition = (i % 4) + startHandPosition;
             var card = this.deck.children.entries[i];
 
             var receivingPlayerIndex = -1;
-            if (i >= 0 && i < 4) {
+            if (j >= 0 && j < 4) {
                 receivingPlayerIndex = this.starterIndex == 4 ? 0 : this.starterIndex;
-            } else if (i >= 4 && i < 8) {
+            } else if (j >= 4 && j < 8) {
                 receivingPlayerIndex = this.starterIndex + 1 == 4 ? 0 : this.starterIndex + 1;
-            } else if (i >= 8 && i < 12) {
+            } else if (j >= 8 && j < 12) {
                 receivingPlayerIndex = this.starterIndex + 2 == 4 ? 0 : this.starterIndex + 2;
                 // this.player3Hand.add(card);
-            } else if (i >= 12 && i < 16) {
+            } else if (j >= 12 && j < 16) {
                 receivingPlayerIndex = this.starterIndex + 3 == 4 ? 0 : this.starterIndex + 3;
             }
             var player = this.playerList[receivingPlayerIndex];
+            j++;
 
             var playerHandPosition = getPlayerHandPosition(player.position.name, handPosition, this.scene.config)
             player.setHand(card);
@@ -70,6 +82,11 @@ export default class Round {
                 duration: 250 
             });
         }
+        timeline.setCallback('onComplete', () => {
+        	if (onComplete) {
+            	onComplete();
+        	}
+        });  
         timeline.play();
 	}
 
