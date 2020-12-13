@@ -10,9 +10,8 @@ export default class Game {
 		this.playerList = playerList;
 		this.socket = socket;
 		this.starterIndex = 0;
-		
-		this.teams = [];
-		// this.teams = createTeams(playerList);
+
+		this.teams = this.createTeams();
 		this.rounds = [];
 	}
 
@@ -29,6 +28,25 @@ export default class Game {
         var frames = this.textures.get('cards').getFrameNames();
         Phaser.Utils.Array.Shuffle(frames);
         return frames;
+    }
+
+    createTeams() {
+    	for (var i = 0; i < 4; i++) {
+    		var j = i % 2;
+    		var teamName = j === 0 ? 'teamA' : 'teamB';
+    		this.playerList[i].teamId = teamName;
+    	}
+
+    	return {
+    		'teamA': {
+    			points: 13,
+    			playerIds: [this.playerList[0].id, this.playerList[2].id]
+    		},
+    		'teamB': {
+    			points: 13,
+    			playerIds: [this.playerList[1].id, this.playerList[3].id]
+    		}
+    	};
     }
 }
 
