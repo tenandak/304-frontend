@@ -16,11 +16,9 @@ export default class GameRoom extends Phaser.Scene {
         };
     }
 
-
     preload() {
         this.load.atlas('cards', 'src/assets/cards.png', 'src/assets/cards.json');
     }
-
 
     create() {
         let self = this;
