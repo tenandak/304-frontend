@@ -19,7 +19,6 @@ export default class Round {
 
 		this.createDeck(game);
 		// this.deck = this.shuffleCards(game.deck)
-
 	}
 
 	createBidList() {
@@ -66,18 +65,48 @@ export default class Round {
 			self.bidWaitContainer.destroy();
 			var player = self.playerList.find(p => p.id === id);
 			if (self.currentPlayer.id === id) {
+				var title = "Please select your trump";
+				self.bidWaitContainer = self.createBidWaitContainer(title);
 				self.selectTrump();
         	} else {
         		var title = "Player " + player.number + " is selecting trump";
         		self.bidWaitContainer = self.createBidWaitContainer(title);
         	}
 		});
+
+		this.socket.on('trumpSelected', function(playerId, cardId) {
+			var player = self.playerList.find(p => p.id === playerId);
+			var card = player.hand.children.entries.find(c => c.frame.name === cardId);
+
+			const timeline = self.scene.tweens.createTimeline();
+			timeline.add({ 
+                targets: card, 
+                y: {value : player.position.trump.y }, 
+                x: { value : player.position.trump.x }, 
+                angle: player.position.angle,
+                duration: 250 
+            });
+
+	        timeline.setCallback('onComplete', () => {
+	        	self.bidWaitContainer.destroy();
+	        	let playerCards = player.hand.children.entries;
+				playerCards.forEach(card => {
+					card.removeAllListeners();
+				});
+	        	self.dealHalfDeck(16, 32, 4);
+	        }); 
+
+        	timeline.play();
+		});
 	}
 
 	selectTrump() {
 		let playerCards = this.currentPlayer.hand.children.entries;
 		playerCards.forEach(card => {
-			card.on('pointerdown', () => console.log('SELECTING A CARD'));
+			card.on('pointerdown', () => {
+				this.socket.emit("trumpSelected", this.currentPlayer.id, card.frame.name);
+				// console.log('SELECTING A CARD', e, card.frame.name
+			});
 		});
 	}
 
@@ -128,6 +157,7 @@ export default class Round {
             	onComplete();
         	}
         });  
+
         timeline.play();
 	}
 
@@ -228,7 +258,6 @@ export default class Round {
 	    				var nextPlayer = this.playerList.find(p => p.id === nextPlayerBid.id);
 	    				const title = "Player " + player.number + " has passed \n" + nextPlayer.name + " is selecting a bid";
 	    				this.socket.emit("promptBid", nextPlayerBid.id, bidValue, false, false, this.bidList, title);
-	    				canKeepBidding = true;
 	    				break;
 	    			}
     			}
