@@ -12,7 +12,8 @@ export default class Player {
 		this.type = PlayerTypes.UNINITIATED;
 		this.hand = scene.add.group();
 		
-		const fontSize = isCurrentPlayer ? 21 : 18;
+		// const fontSize = isCurrentPlayer ? 21 : 18;
+		const fontSize = 18;
 		const fontColour = isCurrentPlayer ? "#FFFFFF" : "#000000"
 		this.name = isCurrentPlayer ? player.name + ' (You)' : player.name;
 

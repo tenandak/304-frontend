@@ -1,4 +1,6 @@
 import { getPlayerPositions, getPlayerHandPosition} from '../models/playerPositions';
+import Play from '../models/Play';
+
 export default class Round { 
 
 	constructor(game) {
@@ -93,11 +95,19 @@ export default class Round {
 				playerCards.forEach(card => {
 					card.removeAllListeners();
 				});
-	        	self.dealHalfDeck(16, 32, 4);
+	        	self.dealHalfDeck(16, 32, 4, () => {
+	        		self.beginRound();
+	        	});
 	        }); 
 
         	timeline.play();
 		});
+	}
+
+	beginRound() {
+		var play = new Play(this, this.starterIndex, this.playerList);
+		play.beginPlay();
+
 	}
 
 	selectTrump() {

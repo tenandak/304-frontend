@@ -5,8 +5,12 @@ export function getPlayerPositions (config) {
 			x: config.width/2 - 85, 
 	    	y: config.height - 35,
 	    	trump: {
-	    		x: config.width/2 - 100, 
-	    		y: config.height - 30*6,
+	    		x: config.width/2 - 200, 
+	    		y: config.height - 120,
+	    	},
+	    	play: {
+	    		x: config.width/2, 
+	    		y: config.height/2 + 50,
 	    	}, 
 	    	angle: 0
 	    },
@@ -16,7 +20,11 @@ export function getPlayerPositions (config) {
 	    	y: config.height/2 + 35,
 	    	trump: {
 	    		x: config.width - 30*6, 
-	    		y: config.height/2 + 100,
+	    		y: config.height/2 + 100 + 30,
+	    	},
+	    	play: {
+	    		x: config.width/2 + 50, 
+	    		y: config.height/2,
 	    	}, 
 	    	angle: 270
 	    },
@@ -25,9 +33,13 @@ export function getPlayerPositions (config) {
 	    	x: config.width/2 + 35, 
 	    	y: 35,
 	    	trump: {
-	    		x: config.width/2 + 100, 
+	    		x: config.width/2 + 100 + 30, 
 	    		y: 30*6,
-	    	},  
+	    	},
+	    	play: {
+	    		x: config.width/2, 
+	    		y: config.height/2 - 50,
+	    	},   
 	    	angle: 180
 	    },
 	    {
@@ -36,8 +48,12 @@ export function getPlayerPositions (config) {
 	    	y: config.height/2 - 35,
 	    	trump: {
 	    		x: 30*6, 
-	    		y: config.height/2 - 100,
+	    		y: config.height/2 - 100 - 30,
 	    	},
+	    	play: {
+	    		x: config.width/2 - 50, 
+	    		y: config.height/2,
+	    	},  
 	    	angle: 90
 	    }
 	];
