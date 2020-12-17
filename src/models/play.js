@@ -6,6 +6,7 @@ export default class Play {
 		this.starterIndex = starterIndex;
 		this.playerList = playerList;
 		this.currentPlayer = currentPlayer;
+		this.table = [];
 	}
 
 	createMove(movingPlayer) {
@@ -18,8 +19,8 @@ export default class Play {
 		// var player = this.playerList[this.starterIndex];
 		var self = this;
 		var cards = movingPlayer.hand;
-		cards.children.entries.forEach((c) => {
-			this.round.scene.input.setDraggable(c);
+		cards.forEach((c) => {
+			c.enableDrag(true);
 		});
 
 		this.round.scene.input.on('drag', function (pointer, gameObject, dragX, dragY) {
@@ -38,33 +39,36 @@ export default class Play {
 
 	beginPlay() {
 		let self = this;
-		let totalMoves = 0;
+		// let totalMoves = 0;
 		let movingPlayer = this.playerList[this.starterIndex];
 
 		this.socket.on('playerMoved', function(playerId, cardId) {
 			// var player = self.playerList.find(p => p.id === playerId); NEED TO FIGURE OUT WHY NULL
-			var card = movingPlayer.hand.children.entries.find(c => c.frame.name === cardId);
+			var card = movingPlayer.hand.find(c => c.id === cardId);
+        	self.table.push(card);
 
 			const timeline = self.round.scene.tweens.createTimeline();
-			timeline.add({ 
-                targets: card, 
-                y: {value : movingPlayer.position.play.y }, 
-                x: { value : movingPlayer.position.play.x }, 
-                angle: movingPlayer.position.angle,
-                duration: 250 
-            });
+			timeline.add(card.changePositionTween(movingPlayer.position.play.x, movingPlayer.position.play.y, movingPlayer.position.angle));
 
 	        timeline.setCallback('onComplete', () => {
-	        	let playerCards = movingPlayer.hand.children.entries;
+	        	let playerCards = movingPlayer.hand;
+	        	let tableCards = self.table;
+
 				playerCards.forEach(c => {
-					self.round.scene.input.setDraggable(c, false);
+					c.enableDrag(false)
 				});
-				totalMoves++;
-				var nextIndex = (self.starterIndex + totalMoves) % 4;
-				movingPlayer = self.playerList[nextIndex];
-				if (movingPlayer.id === self.currentPlayer.id) {
-					var move = self.createMove(movingPlayer);
+				
+				if (tableCards.length === 4) {
+					alert("table is full!");
+				} else {
+					var nextIndex = (self.starterIndex + tableCards.length) % 4;
+					movingPlayer = self.playerList[nextIndex];
+					if (movingPlayer.id === self.currentPlayer.id) {
+						var move = self.createMove(movingPlayer);
+					}
 				}
+
+				
 	        }); 
 
         	timeline.play();

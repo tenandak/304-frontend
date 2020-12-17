@@ -10,7 +10,8 @@ export default class Player {
 
 		this.isCurrentPlayer = isCurrentPlayer;
 		this.type = PlayerTypes.UNINITIATED;
-		this.hand = scene.add.group();
+		// this.hand = scene.add.group();
+		this.hand = [];
 		
 		// const fontSize = isCurrentPlayer ? 21 : 18;
 		const fontSize = 18;
@@ -36,6 +37,6 @@ export default class Player {
 	// }
 
 	setHand(card) {
-		this.hand.add(card);
+		this.hand.push(card);
 	}
 }

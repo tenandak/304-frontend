@@ -1,13 +1,15 @@
 import { getPlayerPositions, getPlayerHandPosition} from '../models/playerPositions';
 import Play from '../models/Play';
+import Card from '../models/Card';
 
 export default class Round { 
 
 	constructor(game) {
 		this.scene = game.scene;
 		this.socket = game.socket;
-		this.setupRound()
-		this.deck = game.scene.add.group();
+		this.setupRound();
+        this.deck = [];
+		// this.deck = game.scene.add.group();
 
 		this.currentPlayer = game.currentPlayer;
 		this.starterPlayer = game.playerList[game.starterIndex];
@@ -45,9 +47,11 @@ export default class Round {
 		this.socket.on('createDeck', function (frames) {
 			for (var i = 0; i < frames.length; i++) {
 	            if (frames[i] !== 'back') {
-	                const card = self.scene.add.sprite(450, 275, 'cards', frames[i]).setInteractive();
-	                card.setScale(0.4);
-	                self.deck.add(card);
+                    var card = new Card(self.scene, 450, 275, frames[i]);
+                    self.deck.push(card);
+	                // const card = self.scene.add.sprite(450, 275, 'cards', frames[i]).setInteractive();
+	                // card.setScale(0.4);
+	                // self.deck.add(card);
 	            }
         	}
         	self.startRound();
@@ -78,22 +82,16 @@ export default class Round {
 
 		this.socket.on('trumpSelected', function(playerId, cardId) {
 			var player = self.playerList.find(p => p.id === playerId);
-			var card = player.hand.children.entries.find(c => c.frame.name === cardId);
+			var card = player.hand.find(c => c.id === cardId);
 
 			const timeline = self.scene.tweens.createTimeline();
-			timeline.add({ 
-                targets: card, 
-                y: {value : player.position.trump.y }, 
-                x: { value : player.position.trump.x }, 
-                angle: player.position.angle,
-                duration: 250 
-            });
+			timeline.add(card.changePositionTween(player.position.trump.x, player.position.trump.y, player.position.angle));
 
 	        timeline.setCallback('onComplete', () => {
 	        	self.bidWaitContainer.destroy();
-	        	let playerCards = player.hand.children.entries;
+	        	let playerCards = player.hand;
 				playerCards.forEach(card => {
-					card.removeAllListeners();
+                    card.removeCardFrameListeners();
 				});
 	        	self.dealHalfDeck(16, 32, 4, () => {
 	        		self.beginRound();
@@ -111,12 +109,11 @@ export default class Round {
 	}
 
 	selectTrump() {
-		let playerCards = this.currentPlayer.hand.children.entries;
+		let playerCards = this.currentPlayer.hand;
 		playerCards.forEach(card => {
-			card.on('pointerdown', () => {
-				this.socket.emit("trumpSelected", this.currentPlayer.id, card.frame.name);
-				// console.log('SELECTING A CARD', e, card.frame.name
-			});
+            card.onClick(() => {
+                this.socket.emit("trumpSelected", this.currentPlayer.id, card.id);
+            });
 		});
 	}
 
@@ -136,7 +133,7 @@ export default class Round {
         var j = 0;
         for (var i = start; i < end; i++) {
             var handPosition = (i % 4) + startHandPosition;
-            var card = this.deck.children.entries[i];
+            var card = this.deck[i];
 
             var receivingPlayerIndex = -1;
             if (j >= 0 && j < 4) {
@@ -154,13 +151,7 @@ export default class Round {
 
             var playerHandPosition = getPlayerHandPosition(player.position.name, handPosition, this.scene.config)
             player.setHand(card);
-            timeline.add({ 
-                targets: card, 
-                y: {value : playerHandPosition.y }, 
-                x: { value : playerHandPosition.x}, 
-                angle: playerHandPosition.angle,
-                duration: 250 
-            });
+            timeline.add(card.changePositionTween(playerHandPosition.x, playerHandPosition.y, playerHandPosition.angle));
         }
         timeline.setCallback('onComplete', () => {
         	if (onComplete) {
