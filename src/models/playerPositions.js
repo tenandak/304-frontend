@@ -23,7 +23,7 @@ export function getPlayerPositions (config) {
 	    		y: config.height/2 + 100 + 30,
 	    	},
 	    	play: {
-	    		x: config.width/2 + 50, 
+	    		x: config.width/2 + 75, 
 	    		y: config.height/2,
 	    	}, 
 	    	angle: 270
@@ -51,7 +51,7 @@ export function getPlayerPositions (config) {
 	    		y: config.height/2 - 100 - 30,
 	    	},
 	    	play: {
-	    		x: config.width/2 - 50, 
+	    		x: config.width/2 - 75, 
 	    		y: config.height/2,
 	    	},  
 	    	angle: 90

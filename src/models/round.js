@@ -105,7 +105,7 @@ export default class Round {
 	}
 
 	beginRound() {
-		var play = new Play(this, this.starterIndex, this.playerList);
+		var play = new Play(this, this.starterIndex, this.playerList, this.currentPlayer);
 		play.beginPlay();
 
 	}
