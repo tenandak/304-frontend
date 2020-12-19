@@ -64,27 +64,27 @@ export default class GameRoom extends Phaser.Scene {
 
         });
 
-        this.socket.on('dealCards-old', function (frames) {
-            console.log('create deck');
+        // this.socket.on('dealCards-old', function (frames) {
+        //     console.log('create deck');
 
 
-            var bidContainer = self.createBidContainer(self, false);
-            bidContainer.setVisible(false); 
+        //     var bidContainer = self.createBidContainer(self, false);
+        //     bidContainer.setVisible(false); 
 
-            // clickButton.visible = false;
+        //     // clickButton.visible = false;
             
-            timeline.setCallback('onComplete', () => {
-                console.log('TIMELINE COMPLETE!!')
-                receivingPlayerIndex = self.dealerIndex + 1 == 4 ? 0 : self.dealerIndex + 1;
-                if (self.playerList[receivingPlayerIndex].id === self.currentPlayer.id) {
-                    bidContainer.setVisible(true); 
-                }
+        //     timeline.setCallback('onComplete', () => {
+        //         console.log('TIMELINE COMPLETE!!')
+        //         receivingPlayerIndex = self.dealerIndex + 1 == 4 ? 0 : self.dealerIndex + 1;
+        //         if (self.playerList[receivingPlayerIndex].id === self.currentPlayer.id) {
+        //             bidContainer.setVisible(true); 
+        //         }
 
-            });  
+        //     });  
 
-            timeline.play();
+        //     timeline.play();
 
-        });
+        // });
     }
 
     beforeGameHeader() {

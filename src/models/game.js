@@ -1,4 +1,5 @@
 import Card from '../models/card';
+import Team from '../models/team';
 import Player from '../models/player';
 import Round from '../models/round';
 
@@ -30,23 +31,17 @@ export default class Game {
         return frames;
     }
 
+    //TODO: convert to class
     createTeams() {
     	for (var i = 0; i < 4; i++) {
     		var j = i % 2;
-    		var teamName = j === 0 ? 'teamA' : 'teamB';
-    		this.playerList[i].teamId = teamName;
+    		var teamId = j === 0 ? 'team13' : 'team24';
+    		this.playerList[i].teamId = teamId;
     	}
 
-    	return {
-    		'teamA': {
-    			points: 13,
-    			playerIds: [this.playerList[0].id, this.playerList[2].id]
-    		},
-    		'teamB': {
-    			points: 13,
-    			playerIds: [this.playerList[1].id, this.playerList[3].id]
-    		}
-    	};
+        var team13 = new Team("team13", [this.playerList[0].id, this.playerList[2].id], 35, 435, this.scene);
+        var team24 = new Team("team24", [this.playerList[1].id, this.playerList[3].id], 775, 435, this.scene);
+    	return [team13, team24];
     }
 }
 

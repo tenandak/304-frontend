@@ -1,6 +1,7 @@
 import { getPlayerPositions, getPlayerHandPosition} from '../models/playerPositions';
 import Play from '../models/Play';
 import Card from '../models/Card';
+import getBidPoints from '../models/bidPoints';
 
 export default class Round { 
 
@@ -9,6 +10,8 @@ export default class Round {
 		this.socket = game.socket;
 		this.setupRound();
         this.deck = [];
+        this.trump = null;
+        this.bid = null;
 		// this.deck = game.scene.add.group();
 
 		this.currentPlayer = game.currentPlayer;
@@ -69,6 +72,10 @@ export default class Round {
 
 		this.socket.on('selectTrump', function(id, bid) {
 			self.bidWaitContainer.destroy();
+            self.bid = {
+                playerId: id,
+                bid: bid,
+            };
 			var player = self.playerList.find(p => p.id === id);
 			if (self.currentPlayer.id === id) {
 				var title = "Please select your trump";
@@ -85,6 +92,9 @@ export default class Round {
 			var card = player.hand.find(c => c.id === cardId);
 
 			const timeline = self.scene.tweens.createTimeline();
+
+            // card.hideCard();
+            self.trump = card;
 			timeline.add(card.changePositionTween(player.position.trump.x, player.position.trump.y, player.position.angle));
 
 	        timeline.setCallback('onComplete', () => {
@@ -93,20 +103,88 @@ export default class Round {
 				playerCards.forEach(card => {
                     card.removeCardFrameListeners();
 				});
+
 	        	self.dealHalfDeck(16, 32, 4, () => {
 	        		self.beginRound();
 	        	});
-	        }); 
 
+	        }); 
         	timeline.play();
 		});
 	}
 
+    //TODO: socket for play winner and start next play OR turn onto a callback function
 	beginRound() {
-		var play = new Play(this, this.starterIndex, this.playerList, this.currentPlayer);
-		play.beginPlay();
+        let self = this;
+        let totalPlays = 0;
+        this.socket.on('nextPlay', function(winningPlayerId) {
+            totalPlays++;
 
+            console.log('>>>>>triggered nextPlay');
+            var newStarterIndex = self.playerList.findIndex(p => p.id === winningPlayerId);
+            self.play.clearListeners();
+            if (totalPlays < 8) {
+                self.play = new Play(self, newStarterIndex, self.playerList, self.currentPlayer);
+                self.play.beginPlay(self.trump, false);
+            } else {
+                self.determineRoundWinner();
+                if (self.teams.find(t => t.points !== 0)) {
+                    totalPlays = 0;
+                    self.restartRound();
+                } else {
+                    alert("we have a winner!!")
+                }
+                
+            }
+
+        });
+
+		this.play = new Play(this, this.starterIndex, this.playerList, this.currentPlayer);
+		this.play.beginPlay(this.trump, false);
 	}
+
+    determineRoundWinner() {
+        var player = this.playerList.find(p => p.id === this.bid.playerId);
+        var team = this.teams.find(t => t.id === player.teamId);
+        var otherTeam = this.teams.find(t => t.id !== player.teamId);
+        var cardValues = team.cardPile.map(c => c.value);
+        var total = cardValues.reduce((a,b) => a + b, 0);
+
+        var points = getBidPoints(this.bid.bid);
+        if (total >= this.bid.bid) {
+            alert (team.id + " wins " + "with bid: " + this.bid.bid + " and points: " + total);
+            team.winningPoints += points.win;
+            otherTeam.points -= points.win;
+        } else {
+            alert (team.id + " loses " + "with bid: " + this.bid.bid + " and points: " + total);
+            otherTeam.winningPoints += points.lose;
+            team.points -= points.lose;
+        }
+        team.updatePointBoard();
+        otherTeam.updatePointBoard();
+    }
+
+    restartRound() {
+        let self = this;
+        const timeline = this.scene.tweens.createTimeline();
+        var cardPiles = this.teams.map(t => t.cardPile);
+
+        cardPiles.forEach((cp) => {
+            cp.forEach(c => timeline.add(c.changePositionTween(450, 275, 0)));
+            this.deck.push(...cp);
+        });
+
+        this.teams.forEach(t => t.clearCardPile());
+
+        timeline.setCallback('onComplete', () => {
+            this.starterIndex = (this.starterIndex + 1) % 4;
+            this.starterPlayer = this.playerList[this.starterIndex];
+            this.bidList = this.createBidList();
+            this.startRound();
+        }); 
+
+        timeline.play();
+    }
 
 	selectTrump() {
 		let playerCards = this.currentPlayer.hand;
@@ -137,14 +215,14 @@ export default class Round {
 
             var receivingPlayerIndex = -1;
             if (j >= 0 && j < 4) {
-                receivingPlayerIndex = this.starterIndex == 4 ? 0 : this.starterIndex;
+                receivingPlayerIndex = this.starterIndex % 4;
             } else if (j >= 4 && j < 8) {
-                receivingPlayerIndex = this.starterIndex + 1 == 4 ? 0 : this.starterIndex + 1;
+                receivingPlayerIndex = (this.starterIndex + 1) % 4;
             } else if (j >= 8 && j < 12) {
-                receivingPlayerIndex = this.starterIndex + 2 == 4 ? 0 : this.starterIndex + 2;
+                receivingPlayerIndex = (this.starterIndex + 2) % 4;
                 // this.player3Hand.add(card);
             } else if (j >= 12 && j < 16) {
-                receivingPlayerIndex = this.starterIndex + 3 == 4 ? 0 : this.starterIndex + 3;
+                receivingPlayerIndex = (this.starterIndex + 3) % 4;
             }
             var player = this.playerList[receivingPlayerIndex];
             j++;
@@ -230,7 +308,8 @@ export default class Round {
     rotateBid(id, bidValue, passType) {
     	var player = this.playerList.find(p => p.id === id);
     	if (passType === 'askPartner') {
-    		var partnerId = this.teams[player.teamId].playerIds.find(pid => pid !== id);
+    		var team = this.teams.find(t => t.id === player.teamId);
+            var partnerId = team.playerIds.find(pid => pid !== player.id);
     		for (var i = 0; i < 4; i++) {
     			if (this.bidList[i].id === id) {
     				this.bidList[i].bid = 'pass';

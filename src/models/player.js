@@ -7,6 +7,7 @@ export default class Player {
 		this.id = player.id;
 		this.name = player.name;
 		this.number = player.number;
+		this.teamId = "";
 
 		this.isCurrentPlayer = isCurrentPlayer;
 		this.type = PlayerTypes.UNINITIATED;
@@ -38,5 +39,9 @@ export default class Player {
 
 	setHand(card) {
 		this.hand.push(card);
+	}
+
+	removeCardFromHand(cardId) {
+		this.hand = this.hand.filter(c => c.id !== cardId);
 	}
 }

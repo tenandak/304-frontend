@@ -1,11 +1,15 @@
 export default class Card {
     constructor(scene, x, y, frame) {
+	    this.scene = scene;
+    	this.frame = frame;
+    	
     	this.cardFrame = scene.add.sprite(x, y, 'cards', frame).setInteractive();
 	    this.cardFrame.setScale(0.4);
 
-	    this.scene = scene;
     	this.id = this.cardFrame.frame.name;
-
+    	this.type = this.cardFrame.frame.customData.type;
+    	this.value = this.cardFrame.frame.customData.value;
+    	this.suit = this.cardFrame.frame.customData.suit;
     }
 
     changePositionTween(x, y, angle) {
@@ -16,6 +20,14 @@ export default class Card {
                 angle: angle,
                 duration: 250 
         };
+    }
+
+    hideCard() {
+    	this.cardFrame.setFrame('back');
+    }
+
+    showCard() {
+        this.cardFrame.setFrame(frame);
     }
 
     onClick(clickMethod) {
@@ -36,11 +48,3 @@ export default class Card {
     	}
     }
 }
-
-
-
-        // this.render = (x, y, sprite) => {
-        //     let card = scene.add.image(x, y, sprite).setScale(0.3, 0.3).setInteractive();
-        //     scene.input.setDraggable(card);
-        //     return card;
-        // }
