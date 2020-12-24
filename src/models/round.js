@@ -51,10 +51,8 @@ export default class Round {
 			for (var i = 0; i < frames.length; i++) {
 	            if (frames[i] !== 'back') {
                     var card = new Card(self.scene, 450, 275, frames[i]);
+                    card.hideCard()
                     self.deck.push(card);
-	                // const card = self.scene.add.sprite(450, 275, 'cards', frames[i]).setInteractive();
-	                // card.setScale(0.4);
-	                // self.deck.add(card);
 	            }
         	}
         	self.startRound();
@@ -62,7 +60,6 @@ export default class Round {
 
 		this.socket.on('promptBid', function(id, minimum, isForced, canAskPartner, bidList, title, keepPrevBid) {
 			self.bidWaitContainer.destroy();
-            console.log(">>> PROMPTED BID LIST: ", bidList);
 			self.bidList = bidList;
 			if (self.currentPlayer.id === id) {
 	            var bidContainer = self.createBidContainer(id, minimum, isForced, canAskPartner, title, keepPrevBid);
@@ -91,12 +88,9 @@ export default class Round {
             } else {
                 self.openSelectTrumpContainer(id, bid, false);
             }
-            
-            // console.log(">>> SELECTING TRUMP BID LIST: ", self.bidList);
 		});
 
 		this.socket.on('trumpSelected', function(playerId, cardId, beginRound) {
-            // console.log('>>>>>> trumpSelected', playerId, cardId, beginRound);
 			var player = self.playerList.find(p => p.id === playerId);
 			var card = player.hand.find(c => c.id === cardId);
 
@@ -117,11 +111,8 @@ export default class Round {
                     self.beginRound();
                 } else {
                     self.dealHalfDeck(16, 32, 4, () => {
-                        // console.log('POST DEALT BID LIST:', self.bidList);
 
                         var finalBidder = self.bidList.find(b => b.bid !== 'pass' && b.bid > 0);
-                        // console.log('>>>>>CURRENT HIGHEST BIDDER', finalBidder, self.bidList);
-
                         var finalBidderNumber = self.playerList.find(p => p.id === finalBidder.id).number;
                         self.bidList.forEach(b => {
                             if (b.bid === 'pass') {
@@ -133,7 +124,6 @@ export default class Round {
                             self.socket.emit("promptBid", finalBidder.id, newMinimum, false, false, self.bidList,
                             "Player " + finalBidderNumber + " has bid " + finalBidder.bid, true);
                         }
-                        // self.beginRound();
                     });
                 }
                 timeline.destroy();
@@ -159,7 +149,6 @@ export default class Round {
     }
 
     reselectingTrump(playerId, bid) {
-        console.log('>>>>>RESELECTING TRUMP');
         const timeline = this.scene.tweens.createTimeline();
         timeline.add(this.trump.moveBack());
         timeline.play();
@@ -172,7 +161,6 @@ export default class Round {
         this.socket.on('nextPlay', function(winningPlayerId) {
             totalPlays++;
 
-            console.log('>>>>>triggered nextPlay');
             var newStarterIndex = self.playerList.findIndex(p => p.id === winningPlayerId);
             self.play.clearListeners();
             if (totalPlays < 8) {
@@ -245,7 +233,6 @@ export default class Round {
 		let playerCards = this.currentPlayer.hand;
 		playerCards.forEach(card => {
             card.onClick(() => {
-                console.log('ON CLICK OF TRUMP');
                 this.socket.emit("trumpSelected", this.currentPlayer.id, card.id, beginRound);
             });
 		});
@@ -258,7 +245,6 @@ export default class Round {
 					170, false, true, this.bidList, "Player " + this.starterPlayer.number + " is selecting a bid", false);
 			}
 		});
-		// this.dealHalfDeck(16, 32, 4);
 	}
 
 	dealHalfDeck(start, end, startHandPosition, onComplete) {
@@ -281,6 +267,9 @@ export default class Round {
                 receivingPlayerIndex = (this.starterIndex + 3) % 4;
             }
             var player = this.playerList[receivingPlayerIndex];
+            if (this.currentPlayer.id === player.id) {
+                card.showCard();
+            }
             j++;
 
             var playerHandPosition = getPlayerHandPosition(player.position.name, handPosition, this.scene.config)

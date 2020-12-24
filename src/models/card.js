@@ -53,7 +53,7 @@ export default class Card {
     }
 
     showCard() {
-        this.cardFrame.setFrame(frame);
+        this.cardFrame.setFrame(this.frame);
     }
 
     onClick(clickMethod) {

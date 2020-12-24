@@ -18,33 +18,15 @@ export default class Play {
     // graphics.lineStyle(2, 0xffff00);
     // graphics.strokeRect(this.zone.x - this.zone.input.hitArea.width / 2, this.zone.y - this.zone.input.hitArea.height / 2, this.zone.input.hitArea.width, this.zone.input.hitArea.height);
 
-		// var player = this.playerList[this.starterIndex];
 		var self = this;
 		var cards = movingPlayer.hand;
 		cards.forEach((c) => {
 			// c.enableDrag(true);
 			c.onClick(() => {
-
 				cards.forEach(c => c.removeCardFrameListeners());
-				// const timeline = self.round.scene.tweens.createTimeline();
-				// timeline.add(c.changePositionTween(movingPlayer.position.play.x, movingPlayer.position.play.y, movingPlayer.position.angle));
-				// console.log('>>>>> on click card: ', self.currentPlayer.id, c.id);
 				self.socket.emit("playerMoved", self.currentPlayer.id, c.id);
 			});
 		});
-
-		// this.round.scene.input.on('drag', function (pointer, gameObject, dragX, dragY) {
-		// 	// console.log('DRAGGING IS CALLED');
-	 //        gameObject.x = pointer.x;
-	 //        gameObject.y = pointer.y;
-	 //    });
-
-	 //    this.round.scene.input.on('drop', function (pointer, gameObject, dropZone) {
-	 //    	console.log('DROPPED IS CALLED');
-	 //    	gameObject.x = movingPlayer.position.play.x;
-  //       	gameObject.y = movingPlayer.position.play.y;
-  //       	self.socket.emit("playerMoved", self.currentPlayer.id, gameObject.frame.name);
-	 //    });
 	}
 
 	//may need to put trump in constructor since it's the same throughout the round?
@@ -54,32 +36,7 @@ export default class Play {
 		self.isTrumpKnown = isTrumpKnown;
 		let movingPlayer = this.playerList[this.starterIndex];
 
-		// this.socket.on('playComplete', function(winningPlayerId) {
-		// 	console.log('triggered playComplete', winningPlayerId);
-		// 	let cards = self.table.map(tc => { return tc.card});
-		// 	let winningPlayer = self.playerList.find(p => p.id === winningPlayerId);
-		// 	let winningTeam = self.teams.find(t => t.id === winningPlayer.teamId);
-
-		// 	const timeline = self.round.scene.tweens.createTimeline();
-
-		// 	for (var i = 0; i < cards.length; i++) {
-		// 		timeline.add(cards[i].changePositionTween(winningTeam.pilePosition.x, winningTeam.pilePosition.y, 0));
-		// 	}
-
-		// 	timeline.play();
-
-
-		// 	winningTeam.addToCardPile(cards);
-		// 	// winningTeam.cardPile.push(...cards);
-		// 	// self.teams[winningPlayer.teamId] = winningTeam;
-
-		// 	self.socket.emit('nextPlay', winningPlayerId);
-		// });
-
-
-
 		this.socket.on('playerMoved', function(playerId, cardId) {
-			console.log('triggered playerMoved', playerId, cardId);
 			var card = movingPlayer.hand.find(c => c.id === cardId);
 			movingPlayer.removeCardFromHand(cardId);
         	self.table.push({
@@ -93,19 +50,13 @@ export default class Play {
 	        timeline.setCallback('onComplete', () => {
 	        	let playerCards = movingPlayer.hand;
 	        	let tableCards = self.table;
-
-				// playerCards.forEach(c => {
-				// 	// c.enableDrag(false);
-				// 	c.removeCardFrameListeners();
-				// });
+	        	card.showCard();
 
 				if (tableCards.length === 1) {
 					self.firstCardSuit = card.suit;
 				}
 				
 				if (tableCards.length === 4) {
-					console.log('DETERMINING PLAY WINNER');
-
 					self.determinePlayWinner(tableCards, self.trump, self.isTrumpKnown, self.firstCardSuit);
 				} else {
 					var nextIndex = (self.starterIndex + tableCards.length) % 4;
@@ -120,7 +71,6 @@ export default class Play {
 
 		});
 
-		// var player = this.playerList[this.starterIndex];
 		if (movingPlayer.id === this.currentPlayer.id) {
 			var move = this.createMove(movingPlayer);
 		}
@@ -151,8 +101,6 @@ export default class Play {
 		let highestCard = sortedCards[0];
 		let winningPlayerId = table.find(tc => tc.card.id === highestCard.id).playerId;
 		this.onPlayComplete(winningPlayerId);
-		// this.socket.emit("playComplete", winningPlayerId);
-
 	}
 
 	onPlayComplete(winningPlayerId) {
@@ -170,10 +118,8 @@ export default class Play {
 
 			timeline.setCallback('onComplete', () => {
 				if (this.currentPlayer.id === winningPlayerId) {
-					console.log('Triggered NEXT PLAY: ', winningPlayer.name);
 					this.socket.emit('nextPlay', winningPlayerId);
 				}
-				console.log('DESTROYING THE TIMELINE CREATED');
 				timeline.destroy();	
 			});
 
