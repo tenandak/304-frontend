@@ -36,6 +36,26 @@ export default function getBidPoints (bid) {
 			win: 3,
 			lose: 4
 		},
+		260: {
+			win: 3,
+			lose: 4
+		},
+		270: {
+			win: 3,
+			lose: 4
+		},
+		280: {
+			win: 3,
+			lose: 4
+		},
+		290: {
+			win: 3,
+			lose: 4
+		},
+		300: {
+			win: 4,
+			lose: 5
+		},
 	}
 	return bidPoints[bid];
 }

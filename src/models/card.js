@@ -10,9 +10,17 @@ export default class Card {
     	this.type = this.cardFrame.frame.customData.type;
     	this.value = this.cardFrame.frame.customData.value;
     	this.suit = this.cardFrame.frame.customData.suit;
+
+        this.prevX = x;
+        this.prevY = y;
+        this.prevAngle = 0;
     }
 
     changePositionTween(x, y, angle) {
+        this.prevX = this.cardFrame.x;
+        this.prevY = this.cardFrame.y;
+        this.prevAngle = this.cardFrame.angle;
+
     	return { 
                 targets: this.cardFrame, 
                 x: {value : x}, 
@@ -20,6 +28,24 @@ export default class Card {
                 angle: angle,
                 duration: 250 
         };
+    }
+
+    moveBack() {
+        console.log('CURRENT POSITION', this.cardFrame.x, this.cardFrame.y);
+        console.log('PREVIOUS POSITION', this.prevX, this.prevY);
+        var newPositionTweet = { 
+                targets: this.cardFrame, 
+                x: {value : this.prevX}, 
+                y: {value : this.prevY}, 
+                angle: this.prevAngle,
+                duration: 250 
+        };
+
+        this.prevX = this.cardFrame.x;
+        this.prevY = this.cardFrame.y;
+        this.prevAngle = this.cardFrame.angle;
+
+        return newPositionTweet;
     }
 
     hideCard() {

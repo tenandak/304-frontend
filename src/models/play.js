@@ -22,21 +22,29 @@ export default class Play {
 		var self = this;
 		var cards = movingPlayer.hand;
 		cards.forEach((c) => {
-			c.enableDrag(true);
+			// c.enableDrag(true);
+			c.onClick(() => {
+
+				cards.forEach(c => c.removeCardFrameListeners());
+				// const timeline = self.round.scene.tweens.createTimeline();
+				// timeline.add(c.changePositionTween(movingPlayer.position.play.x, movingPlayer.position.play.y, movingPlayer.position.angle));
+				// console.log('>>>>> on click card: ', self.currentPlayer.id, c.id);
+				self.socket.emit("playerMoved", self.currentPlayer.id, c.id);
+			});
 		});
 
-		this.round.scene.input.on('drag', function (pointer, gameObject, dragX, dragY) {
-			// console.log('DRAGGING IS CALLED');
-	        gameObject.x = pointer.x;
-	        gameObject.y = pointer.y;
-	    });
+		// this.round.scene.input.on('drag', function (pointer, gameObject, dragX, dragY) {
+		// 	// console.log('DRAGGING IS CALLED');
+	 //        gameObject.x = pointer.x;
+	 //        gameObject.y = pointer.y;
+	 //    });
 
-	    this.round.scene.input.on('drop', function (pointer, gameObject, dropZone) {
-	    	console.log('DROPPED IS CALLED');
-	    	gameObject.x = movingPlayer.position.play.x;
-        	gameObject.y = movingPlayer.position.play.y;
-        	self.socket.emit("playerMoved", self.currentPlayer.id, gameObject.frame.name);
-	    });
+	 //    this.round.scene.input.on('drop', function (pointer, gameObject, dropZone) {
+	 //    	console.log('DROPPED IS CALLED');
+	 //    	gameObject.x = movingPlayer.position.play.x;
+  //       	gameObject.y = movingPlayer.position.play.y;
+  //       	self.socket.emit("playerMoved", self.currentPlayer.id, gameObject.frame.name);
+	 //    });
 	}
 
 	//may need to put trump in constructor since it's the same throughout the round?
@@ -68,6 +76,8 @@ export default class Play {
 		// 	self.socket.emit('nextPlay', winningPlayerId);
 		// });
 
+
+
 		this.socket.on('playerMoved', function(playerId, cardId) {
 			console.log('triggered playerMoved', playerId, cardId);
 			var card = movingPlayer.hand.find(c => c.id === cardId);
@@ -84,9 +94,10 @@ export default class Play {
 	        	let playerCards = movingPlayer.hand;
 	        	let tableCards = self.table;
 
-				playerCards.forEach(c => {
-					c.enableDrag(false);
-				});
+				// playerCards.forEach(c => {
+				// 	// c.enableDrag(false);
+				// 	c.removeCardFrameListeners();
+				// });
 
 				if (tableCards.length === 1) {
 					self.firstCardSuit = card.suit;
@@ -161,7 +172,9 @@ export default class Play {
 				if (this.currentPlayer.id === winningPlayerId) {
 					console.log('Triggered NEXT PLAY: ', winningPlayer.name);
 					this.socket.emit('nextPlay', winningPlayerId);
-				}	
+				}
+				console.log('DESTROYING THE TIMELINE CREATED');
+				timeline.destroy();	
 			});
 
 			timeline.play();

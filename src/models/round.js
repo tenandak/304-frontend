@@ -60,58 +60,110 @@ export default class Round {
         	self.startRound();
 		});
 
-		this.socket.on('promptBid', function(id, minimum, isForced, canAskPartner, bidList, title) {
+		this.socket.on('promptBid', function(id, minimum, isForced, canAskPartner, bidList, title, keepPrevBid) {
 			self.bidWaitContainer.destroy();
+            console.log(">>> PROMPTED BID LIST: ", bidList);
 			self.bidList = bidList;
 			if (self.currentPlayer.id === id) {
-	            var bidContainer = self.createBidContainer(id, minimum, isForced, canAskPartner, title);
+	            var bidContainer = self.createBidContainer(id, minimum, isForced, canAskPartner, title, keepPrevBid);
         	} else {
         		self.bidWaitContainer = self.createBidWaitContainer(title);
         	}
 		});
 
-		this.socket.on('selectTrump', function(id, bid) {
+		this.socket.on('selectTrump', function(id, bid, bidList) {
+            console.log('SELECT TRUMP IS EMITTED', self.trump, self.bid);
+
+            self.bidList = bidList;
 			self.bidWaitContainer.destroy();
-            self.bid = {
-                playerId: id,
-                bid: bid,
-            };
-			var player = self.playerList.find(p => p.id === id);
-			if (self.currentPlayer.id === id) {
-				var title = "Please select your trump";
-				self.bidWaitContainer = self.createBidWaitContainer(title);
-				self.selectTrump();
-        	} else {
-        		var title = "Player " + player.number + " is selecting trump";
-        		self.bidWaitContainer = self.createBidWaitContainer(title);
-        	}
+
+            if (self.trump && self.bid) {
+                if (id === self.bid.playerId && self.bid.bid === bid) {
+                    self.bid = {
+                        playerId: id,
+                        bid: bid,
+                    };
+                    self.beginRound();
+                } else {
+                    self.reselectingTrump(id, bid);
+                    self.openSelectTrumpContainer(id, bid, true);
+                }
+            } else {
+                self.openSelectTrumpContainer(id, bid, false);
+            }
+            
+            // console.log(">>> SELECTING TRUMP BID LIST: ", self.bidList);
 		});
 
-		this.socket.on('trumpSelected', function(playerId, cardId) {
+		this.socket.on('trumpSelected', function(playerId, cardId, beginRound) {
+            // console.log('>>>>>> trumpSelected', playerId, cardId, beginRound);
 			var player = self.playerList.find(p => p.id === playerId);
 			var card = player.hand.find(c => c.id === cardId);
 
-			const timeline = self.scene.tweens.createTimeline();
+            const timeline = self.scene.tweens.createTimeline();
 
             // card.hideCard();
             self.trump = card;
-			timeline.add(card.changePositionTween(player.position.trump.x, player.position.trump.y, player.position.angle));
+            timeline.add(card.changePositionTween(player.position.trump.x, player.position.trump.y, player.position.angle));
 
-	        timeline.setCallback('onComplete', () => {
-	        	self.bidWaitContainer.destroy();
-	        	let playerCards = player.hand;
-				playerCards.forEach(card => {
+            timeline.setCallback('onComplete', () => {
+                self.bidWaitContainer.destroy();
+                let playerCards = player.hand;
+                playerCards.forEach(card => {
                     card.removeCardFrameListeners();
-				});
+                });
 
-	        	self.dealHalfDeck(16, 32, 4, () => {
-	        		self.beginRound();
-	        	});
+                if (beginRound) {
+                    self.beginRound();
+                } else {
+                    self.dealHalfDeck(16, 32, 4, () => {
+                        // console.log('POST DEALT BID LIST:', self.bidList);
 
-	        }); 
-        	timeline.play();
+                        var finalBidder = self.bidList.find(b => b.bid !== 'pass' && b.bid > 0);
+                        // console.log('>>>>>CURRENT HIGHEST BIDDER', finalBidder, self.bidList);
+
+                        var finalBidderNumber = self.playerList.find(p => p.id === finalBidder.id).number;
+                        self.bidList.forEach(b => {
+                            if (b.bid === 'pass') {
+                                b.bid = 0
+                            }
+                        });
+                        var newMinimum = finalBidder.bid < 250 ? 250 : finalBidder.bid;
+                        if (self.currentPlayer.id === finalBidder.id) {
+                            self.socket.emit("promptBid", finalBidder.id, newMinimum, false, false, self.bidList,
+                            "Player " + finalBidderNumber + " has bid " + finalBidder.bid, true);
+                        }
+                        // self.beginRound();
+                    });
+                }
+                timeline.destroy();
+            }); 
+            timeline.play();
 		});
 	}
+
+    openSelectTrumpContainer(id, bid, beginRound) {
+        this.bid = {
+            playerId: id,
+            bid: bid,
+        };
+        var player = this.playerList.find(p => p.id === id);
+        if (this.currentPlayer.id === id) {
+            var title = "Please select your trump";
+            this.bidWaitContainer = this.createBidWaitContainer(title);
+            this.selectTrump(beginRound);
+        } else {
+            var title = "Player " + player.number + " is selecting trump";
+            this.bidWaitContainer = this.createBidWaitContainer(title);
+        }
+    }
+
+    reselectingTrump(playerId, bid) {
+        console.log('>>>>>RESELECTING TRUMP');
+        const timeline = this.scene.tweens.createTimeline();
+        timeline.add(this.trump.moveBack());
+        timeline.play();
+    }
 
     //TODO: socket for play winner and start next play OR turn onto a callback function
 	beginRound() {
@@ -179,18 +231,22 @@ export default class Round {
         timeline.setCallback('onComplete', () => {
             this.starterIndex = (this.starterIndex + 1) % 4;
             this.starterPlayer = this.playerList[this.starterIndex];
+            this.trump = null;
+            this.bid = null;
             this.bidList = this.createBidList();
+
             this.startRound();
         }); 
 
         timeline.play();
     }
 
-	selectTrump() {
+	selectTrump(beginRound) {
 		let playerCards = this.currentPlayer.hand;
 		playerCards.forEach(card => {
             card.onClick(() => {
-                this.socket.emit("trumpSelected", this.currentPlayer.id, card.id);
+                console.log('ON CLICK OF TRUMP');
+                this.socket.emit("trumpSelected", this.currentPlayer.id, card.id, beginRound);
             });
 		});
 	}
@@ -199,7 +255,7 @@ export default class Round {
 		this.dealHalfDeck(0, 16, 0, () => {
 			if (this.currentPlayer.id === this.starterPlayer.id) {
 				this.socket.emit("promptBid", this.starterPlayer.id, 
-					170, false, true, this.bidList, "Player " + this.starterPlayer.number + " is selecting a bid");
+					170, false, true, this.bidList, "Player " + this.starterPlayer.number + " is selecting a bid", false);
 			}
 		});
 		// this.dealHalfDeck(16, 32, 4);
@@ -249,7 +305,7 @@ export default class Round {
         return container;
 	}
 
-    createBidContainer (id, minimum, isForced, canAskPartner, title) {
+    createBidContainer (id, minimum, isForced, canAskPartner, title, keepPrevBid) {
     	var self = this;
         var container = this.scene.add.container(450, 225);
         var rectangle = this.scene.add.rectangle(0, 0, 400, 300, 0x6ae3ff);
@@ -266,18 +322,18 @@ export default class Round {
 		  }
 		}
 
-        for (var i = minimum; i <= 250; i+=10) {
+        for (var i = minimum; i <= 300; i+=10) {
         	const addBid = this.scene.add.text(k, j, i, { fill: '#000000' })
         	.setInteractive()
           	.on('pointerdown', callbackClosure(i, function(i) {
 	          	container.destroy();
-			  	self.rotateBid(id, i, null);
+			  	self.rotateBid(id, i, null, false);
   			}));
 
           	container.add([addBid]);
           	if (j == 90) {
           		j = -30;
-          		k = -60;
+          		k += 100;
           	} else {
           		j+= 30;
           	}
@@ -285,19 +341,19 @@ export default class Round {
 
         if (!isForced) {
         	if (canAskPartner) {
-        		const pickAskPartner = this.scene.add.text(40, -30, 'Ask Partner', { fill: '#000000' })
+        		const pickAskPartner = this.scene.add.text(k, j, 'Ask Partner', { fill: '#000000' })
 		          .setInteractive()
 		          .on('pointerdown', callbackClosure(i, function(i) {
 		          	container.destroy();
-				  	self.rotateBid(id, minimum, 'askPartner');
+				  	self.rotateBid(id, minimum, 'askPartner', false);
 		  		  }));
 		  		container.add([pickAskPartner]);   
         	} else {
-        		const pickPass = this.scene.add.text(40, -30, 'Pass', { fill: '#000000' })
+        		const pickPass = this.scene.add.text(40, j+30, 'Pass', { fill: '#000000' })
 		          .setInteractive()
 		          .on('pointerdown', callbackClosure(i, function(i) {
 		          	container.destroy();
-				  	self.rotateBid(id, minimum, 'pass');
+                    self.rotateBid(id, minimum, 'pass', keepPrevBid);
 		  		  }));
         		container.add([pickPass]);      
         	}
@@ -305,7 +361,7 @@ export default class Round {
         return container;
     }
 
-    rotateBid(id, bidValue, passType) {
+    rotateBid(id, bidValue, passType, keepPrevBid) {
     	var player = this.playerList.find(p => p.id === id);
     	if (passType === 'askPartner') {
     		var team = this.teams.find(t => t.id === player.teamId);
@@ -315,14 +371,18 @@ export default class Round {
     				this.bidList[i].bid = 'pass';
     			}
     		}
+
     		var partner = this.playerList.find(p => p.id === partnerId);
     		const title = "Player " + player.number + " has asked partner \n" + partner.name + " is selecting a bid";
-    		this.socket.emit("promptBid", partnerId, bidValue, true, false, this.bidList, title);
+    		this.socket.emit("promptBid", partnerId, bidValue, true, false, this.bidList, title, false);
     	} else if (passType === 'pass') {
     		var bidderIndex = 0;
     		for (var i = 0; i < 4; i++) {
     			if (this.bidList[i].id === id) {
-    				this.bidList[i].bid = 'pass';
+                    if (!keepPrevBid) {
+                        this.bidList[i].bid = 'pass';
+                    }
+
     				bidderIndex = i;
     			}
     		}
@@ -330,14 +390,15 @@ export default class Round {
     		var finalBidder = this.bidList.find(b => b.bid !== 'pass');
     		if (passes && passes.length === 3) {
     			this.bidWaitContainer.destroy();
-    			this.socket.emit("selectTrump", finalBidder.id, finalBidder.bid);
+
+    			this.socket.emit("selectTrump", finalBidder.id, finalBidder.bid, this.bidList);
     		} else {
     			for (var i = 0; i < 4; i++) {
 	    			const nextPlayerBid = this.bidList[(bidderIndex + i + 1) % 4];
 	    			if (nextPlayerBid.bid !== 'pass' && nextPlayerBid.id !== id) {
 	    				var nextPlayer = this.playerList.find(p => p.id === nextPlayerBid.id);
 	    				const title = "Player " + player.number + " has passed \n" + nextPlayer.name + " is selecting a bid";
-	    				this.socket.emit("promptBid", nextPlayerBid.id, bidValue, false, false, this.bidList, title);
+	    				this.socket.emit("promptBid", nextPlayerBid.id, bidValue, false, false, this.bidList, title, false);
 	    				break;
 	    			}
     			}
@@ -356,7 +417,7 @@ export default class Round {
     			if (nextPlayerBid.bid !== 'pass' && nextPlayerBid.id !== id) {
     				var nextPlayer = this.playerList.find(p => p.id === nextPlayerBid.id);
     				const title = "Player " + player.number + " has bid " + bidValue + "\n" + nextPlayer.name + " is selecting a bid";
-    				this.socket.emit("promptBid", nextPlayerBid.id, bidValue + 10, false, false, this.bidList, title);
+    				this.socket.emit("promptBid", nextPlayerBid.id, bidValue + 10, false, false, this.bidList, title, false);
     				break;
     			}
     		}
