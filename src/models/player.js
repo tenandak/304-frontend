@@ -11,10 +11,8 @@ export default class Player {
 
 		this.isCurrentPlayer = isCurrentPlayer;
 		this.type = PlayerTypes.UNINITIATED;
-		// this.hand = scene.add.group();
 		this.hand = [];
 		
-		// const fontSize = isCurrentPlayer ? 21 : 18;
 		const fontSize = 18;
 		const fontColour = isCurrentPlayer ? "#FFFFFF" : "#000000"
 		this.name = isCurrentPlayer ? player.name + ' (You)' : player.name;
@@ -24,24 +22,20 @@ export default class Player {
 		this.playerHeading.angle = position.angle;
 	}
 
-	// setPlayerType(type) {
-		// this.type = type
-		// if (this.type === PlayerTypes.DEALER) {
-		// 	this.dealerHeading = this.scene.add.text(this.position.x, this.position.y, 'Dealer', 
-		// 	{fontSize: 12, fill: "#123456", align: "center"});
-		// 	this.playerHeading.angle = this.position.angle;
-		// } else {
-		// 	if (this.dealerHeading) {
-		// 		this.dealerHeading.destroy();
-		// 	}
-		// }
-	// }
-
 	setHand(card) {
 		this.hand.push(card);
 	}
 
+	findCardById(cardId) {
+		return this.hand.find(c => c.id === cardId);
+	}
+
 	removeCardFromHand(cardId) {
 		this.hand = this.hand.filter(c => c.id !== cardId);
+	}
+
+	destroyPlayer() {
+		this.hand = [];
+		this.playerHeading.destroy();
 	}
 }

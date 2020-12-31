@@ -12,7 +12,6 @@ export default class Round {
         this.deck = [];
         this.trump = null;
         this.bid = null;
-		// this.deck = game.scene.add.group();
 
 		this.currentPlayer = game.currentPlayer;
 		this.starterPlayer = game.playerList[game.starterIndex];
@@ -25,7 +24,6 @@ export default class Round {
 		this.bidWaitContainer.setVisible(false);
 
 		this.createDeck(game);
-		// this.deck = this.shuffleCards(game.deck)
 	}
 
 	createBidList() {
@@ -69,8 +67,6 @@ export default class Round {
 		});
 
 		this.socket.on('selectTrump', function(id, bid, bidList) {
-            console.log('SELECT TRUMP IS EMITTED', self.trump, self.bid);
-
             self.bidList = bidList;
 			self.bidWaitContainer.destroy();
 
@@ -158,21 +154,22 @@ export default class Round {
 	beginRound() {
         let self = this;
         let totalPlays = 0;
-        this.socket.on('nextPlay', function(winningPlayerId) {
+        this.socket.on('nextPlay', function(winningPlayerId, isTrumpKnown) {
             totalPlays++;
 
             var newStarterIndex = self.playerList.findIndex(p => p.id === winningPlayerId);
             self.play.clearListeners();
             if (totalPlays < 8) {
                 self.play = new Play(self, newStarterIndex, self.playerList, self.currentPlayer);
-                self.play.beginPlay(self.trump, false);
+                console.log('>>> IS TRUMP KNOWN?? :', isTrumpKnown);
+                self.play.beginPlay(self.trump, isTrumpKnown);
             } else {
                 self.determineRoundWinner();
                 if (self.teams.find(t => t.points !== 0)) {
                     totalPlays = 0;
                     self.restartRound();
                 } else {
-                    alert("we have a winner!!")
+                    alert("we have a winner!!!")
                 }
                 
             }
@@ -411,6 +408,19 @@ export default class Round {
     			}
     		}
     	}
+    }
+
+    endRound() {
+        this.socket.off('promptBid');
+        this.socket.off('nextPlay');
+        this.socket.off('trumpSelected');
+        this.socket.off('createDeck');
+        this.socket.off('playerMoved');
+        this.socket.off('playComplete');
+
+        this.deck.forEach(c => c.destroyCard());
+        this.deck = [];
+        this.bidWaitContainer.destroy();
     }
 
 }

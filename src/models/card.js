@@ -31,8 +31,6 @@ export default class Card {
     }
 
     moveBack() {
-        console.log('CURRENT POSITION', this.cardFrame.x, this.cardFrame.y);
-        console.log('PREVIOUS POSITION', this.prevX, this.prevY);
         var newPositionTweet = { 
                 targets: this.cardFrame, 
                 x: {value : this.prevX}, 
@@ -72,5 +70,9 @@ export default class Card {
     	} else {
     		this.scene.input.setDraggable(this.cardFrame, false);
     	}
+    }
+
+    destroyCard() {
+        this.cardFrame.destroy();
     }
 }

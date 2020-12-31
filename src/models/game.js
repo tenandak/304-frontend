@@ -13,15 +13,15 @@ export default class Game {
 		this.starterIndex = 0;
 
 		this.teams = this.createTeams();
-		this.rounds = [];
+		this.round = null;
 	}
 
 	beginGame() {
-		this.rounds.push(this.createRound());
+		this.round = this.createRound();
     }
 
     createRound() {
-    	var round = new Round(this);
+    	return new Round(this);
     }
 
 
@@ -31,7 +31,6 @@ export default class Game {
         return frames;
     }
 
-    //TODO: convert to class
     createTeams() {
     	for (var i = 0; i < 4; i++) {
     		var j = i % 2;
@@ -43,9 +42,9 @@ export default class Game {
         var team24 = new Team("team24", [this.playerList[1].id, this.playerList[3].id], 775, 435, this.scene);
     	return [team13, team24];
     }
+
+    endGame() {
+        this.teams.forEach(t => t.destroyTeam());
+        this.round.endRound();
+    }
 }
-
-
-//game - 4 players, 2 teams, 1 deck, overall points, multiple rounds
-//round - dealer, winner/loser, 4 plays, 8 cards per player, 1 trump
-//play - 4 cards at the table, one winner per play

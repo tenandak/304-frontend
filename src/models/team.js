@@ -33,4 +33,9 @@ export default class Team {
 		this.cardPile = [];
 	}
 
+	destroyTeam() {
+		this.teamBoard.destroy();
+		this.pointBoard.destroy();
+	}
+
 } 

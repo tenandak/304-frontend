@@ -9,19 +9,15 @@ export default class Play {
 		this.table = [];
 		this.firstCardSuit = "";
 		this.teams = round.teams;
+		this.isTrumpKnown = false;
 	}
 
 	createMove(movingPlayer) {
-    this.zone = this.round.scene.add.zone(450, 265, 625, 250).setRectangleDropZone(625, 250);
-
-    // var graphics = this.round.scene.add.graphics();
-    // graphics.lineStyle(2, 0xffff00);
-    // graphics.strokeRect(this.zone.x - this.zone.input.hitArea.width / 2, this.zone.y - this.zone.input.hitArea.height / 2, this.zone.input.hitArea.width, this.zone.input.hitArea.height);
-
 		var self = this;
+		
+    	this.zone = this.round.scene.add.zone(450, 265, 625, 250).setRectangleDropZone(625, 250);
 		var cards = movingPlayer.hand;
 		cards.forEach((c) => {
-			// c.enableDrag(true);
 			c.onClick(() => {
 				cards.forEach(c => c.removeCardFrameListeners());
 				self.socket.emit("playerMoved", self.currentPlayer.id, c.id);
@@ -50,14 +46,18 @@ export default class Play {
 	        timeline.setCallback('onComplete', () => {
 	        	let playerCards = movingPlayer.hand;
 	        	let tableCards = self.table;
-	        	card.showCard();
 
 				if (tableCards.length === 1) {
 					self.firstCardSuit = card.suit;
+	        		card.showCard();
+				} else if (tableCards[tableCards.length - 1].card.suit === self.firstCardSuit) {
+					card.showCard();
+				} else if (self.isTrumpKnown) {
+					card.showCard();
 				}
 				
 				if (tableCards.length === 4) {
-					self.determinePlayWinner(tableCards, self.trump, self.isTrumpKnown, self.firstCardSuit);
+					self.determinePlayWinner(self.firstCardSuit);
 				} else {
 					var nextIndex = (self.starterIndex + tableCards.length) % 4;
 					movingPlayer = self.playerList[nextIndex];
@@ -76,9 +76,49 @@ export default class Play {
 		}
 	}
 
-	determinePlayWinner(table, trump, isTrumpKnown, firstCardSuit) {
-		let cards = table.map(tc => { return tc.card});
-		let trumpSuit = trump.suit;
+	determinePlayWinner(firstCardSuit) {
+		let cards = this.table.map(tc => { return tc.card});
+		let trumpSuit = this.trump.suit;
+
+		if (!this.isTrumpKnown) {
+			var someonePlayedTrump = false;
+			cards.forEach(c => {
+				if (c.suit === this.trump.suit) {
+					someonePlayedTrump = true; //going to duplicate but should happen once
+					c.showCard();
+				}
+			});
+
+			if (someonePlayedTrump) {
+				this.isTrumpKnown = true;
+			}
+
+			if (someonePlayedTrump && !this.hasTrumpPlayed) {
+				this.trump.showCard();
+				const timeline = this.round.scene.tweens.createTimeline();
+				timeline.add({
+	                targets: this.trump.cardFrame, 
+	                scaleX: 1.5, 
+	                scaleY: 1.5, 
+	                duration: 350 
+				});
+				timeline.add({
+	                targets: this.trump.cardFrame, 
+	                scaleX: 0.4, 
+	                scaleY: 0.4, 
+	                duration: 350 
+				});
+		        timeline.add(this.trump.moveBack());
+		        let self = this;
+		        timeline.setCallback('onComplete', () => { 
+		        	if (!self.currentPlayer.findCardById(self.trump.id)) {
+		        		self.trump.hideCard();
+		        	}
+		        	timeline.destroy()
+		        });
+		        timeline.play();
+			}
+		}
 
 		let sortedCards = cards.sort((c1, c2) => {
 			if (c1.suit === trumpSuit && c2.suit !== trumpSuit) {
@@ -99,7 +139,7 @@ export default class Play {
 		});
 
 		let highestCard = sortedCards[0];
-		let winningPlayerId = table.find(tc => tc.card.id === highestCard.id).playerId;
+		let winningPlayerId = this.table.find(tc => tc.card.id === highestCard.id).playerId;
 		this.onPlayComplete(winningPlayerId);
 	}
 
@@ -118,19 +158,16 @@ export default class Play {
 
 			timeline.setCallback('onComplete', () => {
 				if (this.currentPlayer.id === winningPlayerId) {
-					this.socket.emit('nextPlay', winningPlayerId);
+					this.socket.emit('nextPlay', winningPlayerId, this.isTrumpKnown);
 				}
 				timeline.destroy();	
 			});
-
 			timeline.play();
 	}
 
 	clearListeners() {
 		this.socket.off('playerMoved');
 		this.socket.off('playComplete');
-		this.round.scene.input.off('drag');
-		this.round.scene.input.off('drop');
 	}
 
 }
