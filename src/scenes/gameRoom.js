@@ -28,7 +28,7 @@ export default class GameRoom extends Phaser.Scene {
         let self = this;
         let config = this.config;
         self.game = null;
-        self.currentPlayer = null;
+        self.currentPlayer = undefined;
         self.playerObjs = {};
         self.playerPositions = getPlayerPositions(config);
         self.beforeGameHeader();
@@ -36,39 +36,45 @@ export default class GameRoom extends Phaser.Scene {
         this.socket = io('http://localhost:3000', {transports: ['websocket', 'polling', 'flashsocket']});
 
         this.socket.on('connect', function () {
-            console.log('Connected!');
+            console.log('player connected!');
+            self.currentPlayerId = self.socket.id;
         });
 
-        this.socket.on('playerRegistered', function (players) {
-            if (self.currentPlayer === null && players.length <= 4) {
-                self.currentPlayer = new Player(self, self.playerPositions[0], players[players.length - 1], true);
-                self.playerObjs[self.currentPlayer.id] = self.currentPlayer;
-
-                var lastPosition = 3;
-                for (let i = players.length - 2; i >= 0; i--) {
-                    let prevJoinedPlayer = new Player(self, self.playerPositions[lastPosition], players[i], false);
-                    self.playerObjs[prevJoinedPlayer.id] = prevJoinedPlayer;
-                    lastPosition--;
-                }                
-            } else {
-                var newPlayerRelativeIndex = (players.length) - self.currentPlayer.number;
-                let newJoinedPlayer = new Player(self, self.playerPositions[newPlayerRelativeIndex], 
-                    players[players.length - 1], false);
-                self.playerObjs[newJoinedPlayer.id] = newJoinedPlayer;
+        this.socket.on('playerJoined', function (players) {
+            let playerIndex;
+            for (let i = 0; i < players.length; i++) {
+                if (players[i] && (players[i].id === self.currentPlayerId)) {
+                    if (self.currentPlayer === undefined) {
+                        self.currentPlayer = new Player(self, self.playerPositions[0], players[i], true);
+                        self.playerObjs[self.currentPlayer.id] = self.currentPlayer;
+                    }
+                    playerIndex = i;
+                }
             }
 
-            if (players.length === 4) {
-                self.beforeGameText.destroy();
-                var playerList = players.map(p => self.playerObjs[p.id]);
+            for (let j = 1; j < players.length; j++) { //should only be # of players - yourself
+                playerIndex = (playerIndex + 1) % 4;
+                if (players[playerIndex] !== null && !self.playerObjs[players[playerIndex].id]) {
+                    let otherPlayer =
+                        new Player(self, self.playerPositions[j], players[playerIndex], false);
+                    self.playerObjs[otherPlayer.id] = otherPlayer;
+                }
+            }
 
+            let playerList = players
+                .filter(p => p !== null)
+                .map(p => self.playerObjs[p.id]);
+
+            if (playerList.length === 4) {
+                self.beforeGameText.destroy();
                 self.game = new Game(self, playerList, self.socket);
                 self.game.beginGame();
-            } 
+            }
         });
 
         this.socket.on('gameFull', function() {
             self.beforeGameText.destroy();
-            if (self.currentPlayer === null) {
+            if (self.currentPlayer === undefined) {
                 self.gameIsFullHeader();
             }
         });
@@ -77,7 +83,7 @@ export default class GameRoom extends Phaser.Scene {
             if (self.playerObjs[playerId] !== null) {
                 var removedPlayer = self.playerObjs[playerId];
                 removedPlayer.destroyPlayer();
-                delete self.playerObjs[playerId]; 
+                delete self.playerObjs[playerId];
                 self.game.endGame();
                 self.beforeGameHeader();
             }

@@ -60,7 +60,7 @@ export default class Round {
 			self.bidWaitContainer.destroy();
 			self.bidList = bidList;
 			if (self.currentPlayer.id === id) {
-	            var bidContainer = self.createBidContainer(id, minimum, isForced, canAskPartner, title, keepPrevBid);
+                self.bidWaitContainer = self.createBidContainer(id, minimum, isForced, canAskPartner, title, keepPrevBid);
         	} else {
         		self.bidWaitContainer = self.createBidWaitContainer(title);
         	}
@@ -161,7 +161,6 @@ export default class Round {
             self.play.clearListeners();
             if (totalPlays < 8) {
                 self.play = new Play(self, newStarterIndex, self.playerList, self.currentPlayer);
-                console.log('>>> IS TRUMP KNOWN?? :', isTrumpKnown);
                 self.play.beginPlay(self.trump, isTrumpKnown);
             } else {
                 self.determineRoundWinner();

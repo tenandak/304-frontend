@@ -1,6 +1,4 @@
-import Card from '../models/card';
 import Team from '../models/team';
-import Player from '../models/player';
 import Round from '../models/round';
 
 export default class Game {
