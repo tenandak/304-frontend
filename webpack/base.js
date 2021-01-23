@@ -33,8 +33,6 @@ module.exports = env => {
     }),
     new webpack.DefinePlugin({
       'process.env' : JSON.stringify(dotenv.parsed),
-      CANVAS_RENDERER: JSON.stringify(true),
-      WEBGL_RENDERER: JSON.stringify(true)
     }),
     new HtmlWebpackPlugin({
       template: "./index.html"
