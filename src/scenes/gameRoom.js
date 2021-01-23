@@ -1,4 +1,4 @@
-// import Card from '../models/card';
+import Card from '../models/card';
 import Player from '../models/player';
 import Game from '../models/game';
 import { getPlayerPositions, getPlayerHandPosition} from '../models/playerPositions';
