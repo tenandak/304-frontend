@@ -1,5 +1,5 @@
 import { getPlayerPositions, getPlayerHandPosition} from '../models/playerPositions';
-import Play from '../models/Play';
+import Play from 'Play';
 import Card from '../models/Card';
 import getBidPoints from '../models/bidPoints';
 
