@@ -32,8 +32,7 @@ export default class GameRoom extends Phaser.Scene {
         self.playerObjs = {};
         self.playerPositions = getPlayerPositions(config);
         self.beforeGameHeader();
-
-        this.socket = io('http://localhost:3000', {transports: ['websocket', 'polling', 'flashsocket']});
+        this.socket = io(process.env.API_URL, {transports: ['websocket', 'polling', 'flashsocket']});
 
         this.socket.on('connect', function () {
             console.log('player connected!');
