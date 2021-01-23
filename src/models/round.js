@@ -1,7 +1,8 @@
-import { getPlayerPositions, getPlayerHandPosition} from '../models/playerPositions';
-import Play from 'Play';
+import Play from '../models/Play';
 import Card from '../models/Card';
 import getBidPoints from '../models/bidPoints';
+import { getPlayerPositions, getPlayerHandPosition} from '../models/playerPositions';
+
 
 export default class Round { 
 
