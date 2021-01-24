@@ -7,7 +7,7 @@ module.exports = merge(base, {
   entry: "./src/index.js",
   mode: "production",
   output: {
-    filename: 'main.js',
+    filename: 'bundle.js',
   },
   devtool: false,
   performance: {

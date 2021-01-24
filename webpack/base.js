@@ -3,6 +3,7 @@ const path = require("path");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const { CleanWebpackPlugin } = require("clean-webpack-plugin");
 var dotenv = require('dotenv').config({path: __dirname + '/.env'});
+console.log('DIR NAME IS', __dirname);
 
 module.exports = env => {
   return {
@@ -36,7 +37,7 @@ module.exports = env => {
       'process.env' : JSON.stringify(dotenv.parsed),
     }),
     new HtmlWebpackPlugin({
-      template: "./index.html"
+      template: "./dist/index.html"
     })
   ]
   };

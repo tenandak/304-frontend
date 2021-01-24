@@ -11,6 +11,5 @@ const config = {
         GameRoom
     ]
 };
-
 const game = new Phaser.Game(config);
 

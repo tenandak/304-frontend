@@ -24,6 +24,8 @@ export default class GameRoom extends Phaser.Scene {
     }
 
     create() {
+        console.log('INSIDE GAMEROOM.JS CREATE');
+        console.log('process.env', process.env);
         let self = this;
         let config = this.config;
         self.game = null;
