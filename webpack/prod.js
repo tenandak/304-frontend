@@ -3,7 +3,6 @@ const path = require("path");
 const base = require("./base");
 const TerserPlugin = require("terser-webpack-plugin");
 const webpack = require("webpack");
-var dotenv = require('dotenv').config({path: __dirname + '/.env'});
 
 module.exports = merge(base, {
   entry: "./src/index.js",
@@ -27,10 +26,5 @@ module.exports = merge(base, {
         }
       })
     ]
-  },
-  plugins: [
-    new webpack.DefinePlugin({
-      'process.env' : JSON.stringify(dotenv.parsed)
-    })
-  ]
+  }
 });
