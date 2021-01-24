@@ -8,6 +8,7 @@ Thumbs.db
 
 # Vendors
 node_modules/
+webpack/.env
 
 # Build
 /npm-debug.log
