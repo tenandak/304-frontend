@@ -4,9 +4,10 @@ const base = require("./base");
 const TerserPlugin = require("terser-webpack-plugin");
 
 module.exports = merge(base, {
+  entry: "./src/index.js",
   mode: "production",
   output: {
-    filename: "bundle.min.js"
+    filename: 'main.js',
   },
   devtool: false,
   performance: {

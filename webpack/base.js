@@ -6,6 +6,7 @@ var dotenv = require('dotenv').config({path: __dirname + '/.env'});
 
 module.exports = env => {
   return {
+  entry: "./src/index.js",
   mode: "development",
   devtool: "eval-source-map",
   module: {
