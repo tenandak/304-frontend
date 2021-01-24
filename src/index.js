@@ -11,5 +11,5 @@ const config = {
         GameRoom
     ]
 };
+console.log('INDEX JS dotnev', process.env);
 const game = new Phaser.Game(config);
-

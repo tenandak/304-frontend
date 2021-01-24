@@ -3,7 +3,6 @@ const path = require("path");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const { CleanWebpackPlugin } = require("clean-webpack-plugin");
 var dotenv = require('dotenv').config({path: __dirname + '/.env'});
-console.log('DIR NAME IS', __dirname);
 
 module.exports = env => {
   return {

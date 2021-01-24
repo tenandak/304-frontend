@@ -16,7 +16,7 @@ export default class GameRoom extends Phaser.Scene {
     }
 
     preload() {
-        this.load.atlas('cards', 'src/assets/cards.png', 'src/assets/cards.json');
+        this.load.atlas('cards', 'assets/cards.png', 'assets/cards.json');
     }
 
     update() {
@@ -24,7 +24,6 @@ export default class GameRoom extends Phaser.Scene {
     }
 
     create() {
-        console.log('INSIDE GAMEROOM.JS CREATE');
         console.log('process.env', process.env);
         let self = this;
         let config = this.config;
