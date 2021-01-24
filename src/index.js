@@ -13,3 +13,4 @@ const config = {
 };
 
 const game = new Phaser.Game(config);
+game.input.touch.capture = false;
