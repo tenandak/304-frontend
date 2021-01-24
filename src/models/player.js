@@ -6,7 +6,7 @@ export default class Player {
 		this.position = position;
 		this.id = player.id;
 		this.name = player.name;
-		this.number = player.number;
+		this.number = player.number + 1;
 		this.teamId = "";
 
 		this.isCurrentPlayer = isCurrentPlayer;

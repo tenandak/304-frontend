@@ -88,6 +88,7 @@ export default class Round {
 		});
 
 		this.socket.on('trumpSelected', function(playerId, cardId, beginRound) {
+            self.bidWaitContainer.destroy();
 			var player = self.playerList.find(p => p.id === playerId);
 			var card = player.hand.find(c => c.id === cardId);
 
