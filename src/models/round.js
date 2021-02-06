@@ -5,60 +5,78 @@ import { getPlayerPositions, getPlayerHandPosition} from '../models/playerPositi
 
 
 export default class Round { 
-
-	constructor(game) {
+	constructor(game, roundObj, players) {
 		this.scene = game.scene;
 		this.socket = game.socket;
-		this.setupRound();
-        this.deck = [];
-        this.trump = null;
-        this.bid = null;
-
 		this.currentPlayer = game.currentPlayer;
-		this.starterPlayer = game.playerList[game.starterIndex];
-		this.starterIndex = game.starterIndex;
-		this.teams = game.teams;
-		this.playerList = game.playerList;
-		this.bidList = this.createBidList();
+
+        this.deck = this.createDeck(roundObj);
+        this.distributeFirstHalf(roundObj, players);
+        this.manageBidList();
+        // this.bid = roundObj.bid;
+		// this.starterIndex = roundObj.startingPlayerIndex;
+        // this.trump = null;
+		// this.setupRound();
+
+
+		// this.starterPlayer = game.playerList[game.starterIndex];
+		// this.teams = game.teams;
+		// this.playerList = game.playerList;
+		// this.bidList = this.createBidList();
 
 		this.bidWaitContainer = this.createBidWaitContainer('');
 		this.bidWaitContainer.setVisible(false);
 
-		this.createDeck(game);
+		// this.createDeck(game);
 	}
 
-	createBidList() {
-		return this.playerList.map(p => {
-			return {
-				id: p.id,
-				bid: 0
-			};
-		})
+    createDeck(roundObj) {
+        let roundDeck = [];
+        roundObj.deck.cards.forEach(c => {
+            var card = new Card(this.scene, 450, 275, c['filename']);
+            card.hideCard()
+            roundDeck.push(card);
+        });
+        return roundDeck;
 	}
 
-	createDeck(game) {
-		var frames = this.scene.textures.get('cards').getFrameNames();
-        if (this.currentPlayer.id === this.starterPlayer.id) {
-            Phaser.Utils.Array.Shuffle(frames);
-            this.socket.emit("createDeck", frames);
+    distributeFirstHalf(roundObj, players) {
+        const self = this;
+        const timeline = this.scene.tweens.createTimeline();
+        const playerObjs = roundObj.players;
+        let playerIndex = roundObj.startingPlayerIndex;
+        // let deckIndex = 0;
+
+        for (var i = 0; i < 4; i++) {
+            const playerObj = playerObjs[playerIndex];
+            const player = players[playerIndex];
+            var handPosition = 0;
+            playerObj.hand.forEach(c => {
+                //TODO: no need to do this, just distribute in order
+                var card = this.deck.find(cd => cd.id === c.filename);
+                // deckIndex++;
+                var playerHandPosition = getPlayerHandPosition(player.position.name, handPosition, this.scene.config)
+                player.setHand(card);
+                if (player.id === this.currentPlayer.id) {
+                    card.showCard();
+                }
+                timeline.add(card.changePositionTween(playerHandPosition.x, playerHandPosition.y, playerHandPosition.angle));
+                handPosition++;
+            })
+            playerIndex++;
         }
-	}
 
-	setupRound() {
-		let self = this;
-		this.socket.on('createDeck', function (frames) {
-			for (var i = 0; i < frames.length; i++) {
-	            if (frames[i] !== 'back') {
-                    var card = new Card(self.scene, 450, 275, frames[i]);
-                    card.hideCard()
-                    self.deck.push(card);
-	            }
-        	}
-        	self.startRound();
-		});
+        timeline.setCallback('onComplete', () => {
+        	self.socket.emit("firstHalfDealt", this.currentPlayer.id);
+        });  
 
-		this.socket.on('promptBid', function(id, minimum, isForced, canAskPartner, bidList, title, keepPrevBid) {
-			self.bidWaitContainer.destroy();
+        timeline.play();
+    }
+
+    manageBidList() {
+        let self = this;
+        this.socket.on('promptBid', function(id, minimum, isForced, canAskPartner, bidList, title, keepPrevBid) {
+            self.bidWaitContainer.destroy();
 			self.bidList = bidList;
 			if (self.currentPlayer.id === id) {
                 self.bidWaitContainer = self.createBidContainer(id, minimum, isForced, canAskPartner, title, keepPrevBid);
@@ -66,69 +84,103 @@ export default class Round {
         		self.bidWaitContainer = self.createBidWaitContainer(title);
         	}
 		});
+    }
 
-		this.socket.on('selectTrump', function(id, bid, bidList) {
-            self.bidList = bidList;
-			self.bidWaitContainer.destroy();
+    // setupRound() {
+	// 	let self = this;
+	// 	this.socket.on('createDeck', function (frames) {
+	// 		for (var i = 0; i < frames.length; i++) {
+	//             if (frames[i] !== 'back') {
+    //                 var card = new Card(self.scene, 450, 275, frames[i]);
+    //                 card.hideCard()
+    //                 self.deck.push(card);
+	//             }
+    //     	}
+    //     	self.startRound();
+	// 	});
 
-            if (self.trump && self.bid) {
-                if (id === self.bid.playerId && self.bid.bid === bid) {
-                    self.bid = {
-                        playerId: id,
-                        bid: bid,
-                    };
-                    self.beginRound();
-                } else {
-                    self.reselectingTrump(id, bid);
-                    self.openSelectTrumpContainer(id, bid, true);
-                }
-            } else {
-                self.openSelectTrumpContainer(id, bid, false);
-            }
-		});
+	// 	this.socket.on('promptBid', function(id, minimum, isForced, canAskPartner, bidList, title, keepPrevBid) {
+	// 		self.bidWaitContainer.destroy();
+	// 		self.bidList = bidList;
+	// 		if (self.currentPlayer.id === id) {
+    //             self.bidWaitContainer = self.createBidContainer(id, minimum, isForced, canAskPartner, title, keepPrevBid);
+    //     	} else {
+    //     		self.bidWaitContainer = self.createBidWaitContainer(title);
+    //     	}
+	// 	});
 
-		this.socket.on('trumpSelected', function(playerId, cardId, beginRound) {
-            self.bidWaitContainer.destroy();
-			var player = self.playerList.find(p => p.id === playerId);
-			var card = player.hand.find(c => c.id === cardId);
+	// 	this.socket.on('selectTrump', function(id, bid, bidList) {
+    //         self.bidList = bidList;
+	// 		self.bidWaitContainer.destroy();
 
-            const timeline = self.scene.tweens.createTimeline();
+    //         if (self.trump && self.bid) {
+    //             if (id === self.bid.playerId && self.bid.bid === bid) {
+    //                 self.bid = {
+    //                     playerId: id,
+    //                     bid: bid,
+    //                 };
+    //                 self.beginRound();
+    //             } else {
+    //                 self.reselectingTrump(id, bid);
+    //                 self.openSelectTrumpContainer(id, bid, true);
+    //             }
+    //         } else {
+    //             self.openSelectTrumpContainer(id, bid, false);
+    //         }
+	// 	});
 
-            // card.hideCard();
-            self.trump = card;
-            timeline.add(card.changePositionTween(player.position.trump.x, player.position.trump.y, player.position.angle));
+	// 	this.socket.on('trumpSelected', function(playerId, cardId, beginRound) {
+    //         self.bidWaitContainer.destroy();
+	// 		var player = self.playerList.find(p => p.id === playerId);
+	// 		var card = player.hand.find(c => c.id === cardId);
 
-            timeline.setCallback('onComplete', () => {
-                self.bidWaitContainer.destroy();
-                let playerCards = player.hand;
-                playerCards.forEach(card => {
-                    card.removeCardFrameListeners();
-                });
+    //         const timeline = self.scene.tweens.createTimeline();
 
-                if (beginRound) {
-                    self.beginRound();
-                } else {
-                    self.dealHalfDeck(16, 32, 4, () => {
+    //         // card.hideCard();
+    //         self.trump = card;
+    //         timeline.add(card.changePositionTween(player.position.trump.x, player.position.trump.y, player.position.angle));
 
-                        var finalBidder = self.bidList.find(b => b.bid !== 'pass' && b.bid > 0);
-                        var finalBidderNumber = self.playerList.find(p => p.id === finalBidder.id).number;
-                        self.bidList.forEach(b => {
-                            if (b.bid === 'pass') {
-                                b.bid = 0
-                            }
-                        });
-                        var newMinimum = finalBidder.bid < 250 ? 250 : finalBidder.bid;
-                        if (self.currentPlayer.id === finalBidder.id) {
-                            self.socket.emit("promptBid", finalBidder.id, newMinimum, false, false, self.bidList,
-                            "Player " + finalBidderNumber + " has bid " + finalBidder.bid, true);
-                        }
-                    });
-                }
-                timeline.destroy();
-            }); 
-            timeline.play();
-		});
-	}
+    //         timeline.setCallback('onComplete', () => {
+    //             self.bidWaitContainer.destroy();
+    //             let playerCards = player.hand;
+    //             playerCards.forEach(card => {
+    //                 card.removeCardFrameListeners();
+    //             });
+
+    //             if (beginRound) {
+    //                 self.beginRound();
+    //             } else {
+    //                 self.dealHalfDeck(16, 32, 4, () => {
+
+    //                     var finalBidder = self.bidList.find(b => b.bid !== 'pass' && b.bid > 0);
+    //                     var finalBidderNumber = self.playerList.find(p => p.id === finalBidder.id).number;
+    //                     self.bidList.forEach(b => {
+    //                         if (b.bid === 'pass') {
+    //                             b.bid = 0
+    //                         }
+    //                     });
+    //                     var newMinimum = finalBidder.bid < 250 ? 250 : finalBidder.bid;
+    //                     if (self.currentPlayer.id === finalBidder.id) {
+    //                         self.socket.emit("promptBid", finalBidder.id, newMinimum, false, false, self.bidList,
+    //                         "Player " + finalBidderNumber + " has bid " + finalBidder.bid, true);
+    //                     }
+    //                 });
+    //             }
+    //             timeline.destroy();
+    //         }); 
+    //         timeline.play();
+	// 	});
+	// }
+
+	// createBidList() {
+	// 	return this.playerList.map(p => {
+	// 		return {
+	// 			id: p.id,
+	// 			bid: 0
+	// 		};
+	// 	})
+	// }
+
 
     openSelectTrumpContainer(id, bid, beginRound) {
         this.bid = {

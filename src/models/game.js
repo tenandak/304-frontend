@@ -1,43 +1,20 @@
-import Team from '../models/team';
 import Round from '../models/round';
+import Team from '../models/team';
 
 export default class Game {
 	
-	constructor(scene, playerList, socket) {
+	constructor(scene, gameObj, players) {
 		this.scene = scene;
+		this.socket = scene.socket;
 		this.currentPlayer = scene.currentPlayer;
-		this.playerList = playerList;
-		this.socket = socket;
-		this.starterIndex = 0;
-
-		this.teams = this.createTeams();
-		this.round = null;
+        this.players = players;
+		this.teams = this.createTeams(gameObj.teams);
+		this.round = new Round(this, gameObj.rounds[0], players);
 	}
 
-	beginGame() {
-		this.round = this.createRound();
-    }
-
-    createRound() {
-    	return new Round(this);
-    }
-
-
-	shuffleDeck() {
-        var frames = this.textures.get('cards').getFrameNames();
-        Phaser.Utils.Array.Shuffle(frames);
-        return frames;
-    }
-
-    createTeams() {
-    	for (var i = 0; i < 4; i++) {
-    		var j = i % 2;
-    		var teamId = j === 0 ? 'team13' : 'team24';
-    		this.playerList[i].teamId = teamId;
-    	}
-
-        var team13 = new Team("team13", [this.playerList[0].id, this.playerList[2].id], 35, 435, this.scene);
-        var team24 = new Team("team24", [this.playerList[1].id, this.playerList[3].id], 775, 435, this.scene);
+    createTeams(teams) {
+        var team13 = new Team(teams[0], 35, 435, this.scene);
+        var team24 = new Team(teams[1], 775, 435, this.scene);
     	return [team13, team24];
     }
 

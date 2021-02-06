@@ -58,17 +58,29 @@ export default class GameRoom extends Phaser.Scene {
                     self.playerObjs[otherPlayer.id] = otherPlayer;
                 }
             }
+        });
 
-            let playerList = players
+        this.socket.on('startGame', function(game) {
+            let players = game.players
                 .filter(p => p !== null)
                 .map(p => self.playerObjs[p.id]);
 
-            if (playerList.length === 4) {
-                self.beforeGameText.destroy();
-                self.game = new Game(self, playerList, self.socket);
-                self.game.beginGame();
-            }
+            self.beforeGameText.destroy();
+            // console.log(game);
+            self.game = new Game(self, game, players);
+            //     self.game.beginGame();
+            // let playerList = players
+            //     .filter(p => p !== null)
+            //     .map(p => self.playerObjs[p.id]);
+
+            // if (playerList.length === 4) {
+            //     self.beforeGameText.destroy();
+            //     self.game = new Game(self, playerList, self.socket);
+            //     self.game.beginGame();
+            // }
         });
+
+
 
         this.socket.on('gameFull', function() {
             self.beforeGameText.destroy();

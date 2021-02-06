@@ -14,5 +14,5 @@ app.use('/assets', express.static(ASSETS_DIR));
 const PORT = process.env.PORT || 8080;
 
 app.listen(PORT, () => {
-	console.log('Listening...');
+	console.log('Listening on PORT', PORT);
 });

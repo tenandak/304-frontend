@@ -1,10 +1,10 @@
 export default class Team {
 
-	constructor(id, playerIds, x, y, scene) {
-		this.id = id;
-		this.points = 13;
-		this.winningPoints = 0;
-		this.playerIds = playerIds;
+	constructor(team, x, y, scene) {
+		this.id = team.id;
+		this.points = team.givingPoints;
+		this.winningPoints = team.winningPoints;
+		this.playerIds = team.playerIds;
 		this.cardPile = [];
 		this.pilePosition = {
 			x: x,
