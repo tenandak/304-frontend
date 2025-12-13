@@ -27,6 +27,11 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
     ? players.find((p) => p.id === highestBidderId)
     : null;
   const [selectedSuit, setSelectedSuit] = useState(null);
+  const override = round?.overrideOptions;
+  const isOptional = round?.phase === "optional-250-bidding";
+  const turnId = override?.currentTurnPlayerId || null;
+  const isMyOverrideTurn = turnId === playerId;
+  const passedOverride = new Set(override?.passedPlayerIds || []);
 
   const suitSymbol = (suit) => {
     switch (suit) {
@@ -185,6 +190,50 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
           </p>
           <p style={{ marginTop: "0.25rem" }}>
             Passes: {passedIds.length}/3
+          </p>
+        </div>
+      )}
+      {isOptional && (
+        <div style={{ marginTop: 20, padding: 10, border: "1px solid #ccc" }}>
+          <h4>Optional 250 Bidding</h4>
+          <p>
+            Highest bid: {override?.highestBid ?? "None"} by{" "}
+            {players.find((p) => p.id === override?.highestBidderId)?.name ||
+              override?.highestBidderId ||
+              "N/A"}
+          </p>
+          <p>
+            Optional 250 bidding — current turn:{" "}
+            {players.find((p) => p.id === turnId)?.name || turnId || "Unknown"}
+          </p>
+          {!isMyOverrideTurn ? (
+            <p>Waiting…</p>
+          ) : (
+            <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+              <button
+                onClick={() =>
+                  onSendAction({
+                    type: "PLACE_OVERRIDE_BID",
+                    payload: { type: "bid", value: 250 },
+                  })
+                }
+              >
+                Bid 250
+              </button>
+              <button
+                onClick={() =>
+                  onSendAction({
+                    type: "PLACE_OVERRIDE_BID",
+                    payload: { type: "pass" },
+                  })
+                }
+              >
+                Pass
+              </button>
+            </div>
+          )}
+          <p style={{ marginTop: "0.25rem" }}>
+            Passes so far: {passedOverride.size}
           </p>
         </div>
       )}
