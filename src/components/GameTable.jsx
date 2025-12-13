@@ -42,6 +42,14 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
   const highestBidder = highestBidderId
     ? players.find((p) => p.id === highestBidderId)
     : null;
+  const hiddenTrumpCardId = round?.trump?.hiddenCardId;
+  const isTrumpOwner = bidding?.bidderId === playerId;
+  const hiddenTrumpCard = (() => {
+    if (!hiddenTrumpCardId || !isTrumpOwner) return null;
+    const [suit, rank] = hiddenTrumpCardId.split("-");
+    if (!suit || !rank) return null;
+    return { id: hiddenTrumpCardId, suit, rank };
+  })();
   const [selectedSuit, setSelectedSuit] = useState(null);
   const override = round?.overrideOptions;
   const isOptional = round?.phase === "optional-250-bidding";
@@ -126,6 +134,17 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
               {card.rank} {suitSymbol(card.suit)}
             </button>
           ))}
+        </div>
+      )}
+      {hiddenTrumpCard && (
+        <div style={{ marginTop: "0.5rem" }}>
+          <h4 style={{ margin: "0.25rem 0" }}>Trump Card</h4>
+          <button
+            type="button"
+            style={{ padding: "0.4rem 0.6rem", minWidth: "3.5rem" }}
+          >
+            {hiddenTrumpCard.rank} {suitSymbol(hiddenTrumpCard.suit)}
+          </button>
         </div>
       )}
 
