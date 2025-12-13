@@ -146,7 +146,7 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
                 Bid {bid}
               </button>
             ))}
-            {options?.canCallPartner && (
+            {options?.canCallPartner && isMyTurn && (
               <button
                 onClick={() =>
                   onSendAction({
