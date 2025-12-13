@@ -9,17 +9,33 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
   const round = gameState?.currentRound;
   const options = round?.biddingOptions;
   const bidding = round?.bidding;
-  const isBidding = round?.phase === "first-pass-bidding";
+  const isBidding =
+    round?.phase === "first-pass-bidding" ||
+    round?.phase === "second-pass-bidding";
   const currentTurnPlayerId =
     options?.currentTurnPlayerId ?? bidding?.currentTurnPlayerId ?? null;
-  const isMyTurn = currentTurnPlayerId === playerId;
+  const isMyTurn = currentTurnPlayerId
+    ? currentTurnPlayerId === playerId
+    : true;
   const hasBid = !!bidding?.hasBid;
   const highestBidderId = options?.highestBidderId || null;
   const isHighestBidder = highestBidderId === playerId;
-  const allowedBids =
+  const allowedActions =
+    options?.allowedActionsByPlayerId?.[playerId] || [];
+  let allowedBids =
     options?.allowedBidValuesByPlayerId?.[playerId] || [];
-  const isOpen = options?.isOpenBidding === true;
-  const passedIds = options?.passedPlayerIdsSinceLastBid || [];
+  if (
+    allowedBids.length === 0 &&
+    allowedActions.includes("bid250")
+  ) {
+    allowedBids = [250];
+  }
+  const isOpen =
+    options?.isOpenBidding ?? bidding?.isOpenBidding ?? false;
+  const passedIds =
+    options?.passedPlayerIdsSinceLastBid ||
+    options?.passedPlayerIds ||
+    [];
   const iPassed = passedIds.includes(playerId);
   const highestBidValue =
     options?.highestBid ?? bidding?.highestBid ?? null;
@@ -32,6 +48,10 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
   const turnId = override?.currentTurnPlayerId || null;
   const isMyOverrideTurn = turnId === playerId;
   const passedOverride = new Set(override?.passedPlayerIds || []);
+  const bidActionType =
+    round?.phase === "second-pass-bidding"
+      ? "PLACE_SECOND_PASS_BID"
+      : "PLACE_FIRST_BID";
 
   const suitSymbol = (suit) => {
     switch (suit) {
@@ -129,21 +149,29 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
 
       {isBidding && (
         <div style={{ marginTop: 20, padding: 10, border: "1px solid #ccc" }}>
-          <h4>First-Pass Bidding</h4>
+          <h4>
+            {round?.phase === "second-pass-bidding"
+              ? "Second-Pass (250) Bidding"
+              : "First-Pass Bidding"}
+          </h4>
           <p>
             Current turn:{" "}
             {players.find((p) => p.id === currentTurnPlayerId)?.name ||
               currentTurnPlayerId ||
               "Unknown"}
           </p>
-          <p>Choose a bid or call Partner.</p>
+          <p>
+            {round?.phase === "second-pass-bidding"
+              ? "Second-pass: non-highest players may bid 250 or pass."
+              : "Choose a bid or call Partner."}
+          </p>
           <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
             {allowedBids.map((bid) => (
               <button
                 key={bid}
                 onClick={() =>
                   onSendAction({
-                    type: "PLACE_FIRST_BID",
+                    type: bidActionType,
                     payload: { type: "bid", value: bid },
                   })
                 }
@@ -155,7 +183,7 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
               <button
                 onClick={() =>
                   onSendAction({
-                    type: "PLACE_FIRST_BID",
+                    type: bidActionType,
                     payload: { type: "partner" },
                   })
                 }
@@ -167,7 +195,7 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
               <button
                 onClick={() =>
                   onSendAction({
-                    type: "PLACE_FIRST_BID",
+                    type: bidActionType,
                     payload: { type: "pass" },
                   })
                 }
@@ -213,7 +241,7 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
               <button
                 onClick={() =>
                   onSendAction({
-                    type: "PLACE_OVERRIDE_BID",
+                    type: "PLACE_SECOND_PASS_BID",
                     payload: { type: "bid", value: 250 },
                   })
                 }
@@ -223,7 +251,7 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
               <button
                 onClick={() =>
                   onSendAction({
-                    type: "PLACE_OVERRIDE_BID",
+                    type: "PLACE_SECOND_PASS_BID",
                     payload: { type: "pass" },
                   })
                 }

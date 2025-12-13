@@ -1,214 +1,27 @@
 {
-    "id": "match-1765595012880",
-    "players": [
-      {
-        "id": "ceMnqPABftoUvh5TAAAN",
-        "name": "a",
-        "socketId": "ceMnqPABftoUvh5TAAAN",
-        "seatIndex": 0,
-        "teamId": "teamA",
-        "hand": [
-          {
-            "id": "diamonds-A",
-            "rank": "A",
-            "suit": "diamonds"
-          },
-          {
-            "id": "hearts-7",
-            "rank": "7",
-            "suit": "hearts"
-          },
-          {
-            "id": "spades-10",
-            "rank": "10",
-            "suit": "spades"
-          },
-          {
-            "id": "hearts-10",
-            "rank": "10",
-            "suit": "hearts"
-          }
-        ],
-        "trickPoints": 0,
-        "tricksWonCount": 0
-      },
-      {
-        "id": "5S817aNgUqGJUYq4AAAQ",
-        "name": "b",
-        "socketId": "5S817aNgUqGJUYq4AAAQ",
-        "seatIndex": 1,
-        "teamId": "teamB",
-        "hand": [
-          {
-            "id": "hearts-Q",
-            "rank": "Q",
-            "suit": "hearts"
-          },
-          {
-            "id": "hearts-K",
-            "rank": "K",
-            "suit": "hearts"
-          },
-          {
-            "id": "diamonds-K",
-            "rank": "K",
-            "suit": "diamonds"
-          },
-          {
-            "id": "clubs-8",
-            "rank": "8",
-            "suit": "clubs"
-          }
-        ],
-        "trickPoints": 0,
-        "tricksWonCount": 0
-      },
-      {
-        "id": "HiwNhSVGSnVkGAl8AAAT",
-        "name": "c",
-        "socketId": "HiwNhSVGSnVkGAl8AAAT",
-        "seatIndex": 2,
-        "teamId": "teamA",
-        "hand": [
-          {
-            "id": "spades-7",
-            "rank": "7",
-            "suit": "spades"
-          },
-          {
-            "id": "spades-K",
-            "rank": "K",
-            "suit": "spades"
-          },
-          {
-            "id": "clubs-9",
-            "rank": "9",
-            "suit": "clubs"
-          },
-          {
-            "id": "clubs-10",
-            "rank": "10",
-            "suit": "clubs"
-          }
-        ],
-        "trickPoints": 0,
-        "tricksWonCount": 0
-      },
-      {
-        "id": "O0ntNsPqDcn3GMnhAAAL",
-        "name": "d",
-        "socketId": "O0ntNsPqDcn3GMnhAAAL",
-        "seatIndex": 3,
-        "teamId": "teamB",
-        "hand": [
-          {
-            "id": "spades-A",
-            "rank": "A",
-            "suit": "spades"
-          },
-          {
-            "id": "diamonds-9",
-            "rank": "9",
-            "suit": "diamonds"
-          },
-          {
-            "id": "spades-J",
-            "rank": "J",
-            "suit": "spades"
-          },
-          {
-            "id": "hearts-8",
-            "rank": "8",
-            "suit": "hearts"
-          }
-        ],
-        "trickPoints": 0,
-        "tricksWonCount": 0
-      }
-    ],
-    "teams": [
-      {
-        "id": "teamA",
-        "playerIds": [
-          "ceMnqPABftoUvh5TAAAN",
-          "HiwNhSVGSnVkGAl8AAAT"
-        ],
-        "collector": 0,
-        "distributor": 10
-      },
-      {
-        "id": "teamB",
-        "playerIds": [
-          "5S817aNgUqGJUYq4AAAQ",
-          "O0ntNsPqDcn3GMnhAAAL"
-        ],
-        "collector": 0,
-        "distributor": 10
-      }
-    ],
-    "dealerIndex": 0,
-    "currentRound": {
-      "id": "round-1765595012881",
-      "dealerIndex": 0,
-      "startingPlayerIndex": 1,
-      "phase": "first-pass-bidding",
-      "bidding": {
-        "phase": "first-pass",
-        "passedPlayerIdsSinceLastBid": [],
-        "isOpenBidding": true,
-        "order": [
-          "5S817aNgUqGJUYq4AAAQ",
-          "HiwNhSVGSnVkGAl8AAAT",
-          "O0ntNsPqDcn3GMnhAAAL",
-          "ceMnqPABftoUvh5TAAAN"
-        ],
-        "turnIndex": 1,
-        "currentTurnPlayerId": null,
-        "hasBid": true,
-        "passesSinceLastBid": 0,
-        "partnerCallerId": null,
-        "partnerCalled": false,
-        "bids": [
-          {
-            "playerId": "5S817aNgUqGJUYq4AAAQ",
-            "type": "bid",
-            "value": 70
-          }
-        ],
-        "highestBid": 70,
-        "bidderId": "5S817aNgUqGJUYq4AAAQ",
-        "partnerForcedId": null,
-        "finalBidValue": null
-      },
-      "trump": {
-        "suit": null,
-        "card": null,
-        "revealed": false
-      },
-      "trickIndex": 0,
-      "tricks": [
+  "id": "match-1765605410622",
+  "players": [
+    {
+      "id": "NsvXXHkwmNVMYFp_AAAN",
+      "name": "a",
+      "socketId": "NsvXXHkwmNVMYFp_AAAN",
+      "seatIndex": 0,
+      "teamId": "teamA",
+      "hand": [
         {
-          "index": 0,
-          "cards": [],
-          "ledSuit": null,
-          "winnerPlayerId": null
-        }
-      ],
-      "deck": [
-        {
-          "id": "clubs-K",
-          "rank": "K",
-          "suit": "clubs"
-        },
-        {
-          "id": "spades-8",
-          "rank": "8",
-          "suit": "spades"
-        },
-        {
-          "id": "diamonds-7",
-          "rank": "7",
+          "id": "diamonds-10",
+          "rank": "10",
           "suit": "diamonds"
+        },
+        {
+          "id": "hearts-Q",
+          "rank": "Q",
+          "suit": "hearts"
+        },
+        {
+          "id": "spades-7",
+          "rank": "7",
+          "suit": "spades"
         },
         {
           "id": "diamonds-J",
@@ -216,9 +29,40 @@
           "suit": "diamonds"
         },
         {
-          "id": "hearts-J",
+          "id": "clubs-A",
+          "rank": "A",
+          "suit": "clubs"
+        },
+        {
+          "id": "spades-10",
+          "rank": "10",
+          "suit": "spades"
+        },
+        {
+          "id": "diamonds-9",
+          "rank": "9",
+          "suit": "diamonds"
+        },
+        {
+          "id": "clubs-J",
           "rank": "J",
-          "suit": "hearts"
+          "suit": "clubs"
+        }
+      ],
+      "trickPoints": 0,
+      "tricksWonCount": 0
+    },
+    {
+      "id": "1hfKZMJ3LnDXGjCZAAAK",
+      "name": "b",
+      "socketId": "1hfKZMJ3LnDXGjCZAAAK",
+      "seatIndex": 1,
+      "teamId": "teamB",
+      "hand": [
+        {
+          "id": "spades-K",
+          "rank": "K",
+          "suit": "spades"
         },
         {
           "id": "diamonds-8",
@@ -231,9 +75,14 @@
           "suit": "hearts"
         },
         {
-          "id": "diamonds-10",
-          "rank": "10",
-          "suit": "diamonds"
+          "id": "clubs-8",
+          "rank": "8",
+          "suit": "clubs"
+        },
+        {
+          "id": "hearts-8",
+          "rank": "8",
+          "suit": "hearts"
         },
         {
           "id": "hearts-A",
@@ -241,28 +90,90 @@
           "suit": "hearts"
         },
         {
-          "id": "clubs-A",
-          "rank": "A",
-          "suit": "clubs"
-        },
-        {
-          "id": "clubs-J",
-          "rank": "J",
-          "suit": "clubs"
-        },
-        {
-          "id": "clubs-Q",
-          "rank": "Q",
-          "suit": "clubs"
-        },
-        {
           "id": "spades-9",
           "rank": "9",
           "suit": "spades"
+        }
+      ],
+      "trickPoints": 0,
+      "tricksWonCount": 0
+    },
+    {
+      "id": "6zMEqU7XLVRA_UjwAAAQ",
+      "name": "c",
+      "socketId": "6zMEqU7XLVRA_UjwAAAQ",
+      "seatIndex": 2,
+      "teamId": "teamA",
+      "hand": [
+        {
+          "id": "hearts-K",
+          "rank": "K",
+          "suit": "hearts"
+        },
+        {
+          "id": "spades-Q",
+          "rank": "Q",
+          "suit": "spades"
+        },
+        {
+          "id": "clubs-10",
+          "rank": "10",
+          "suit": "clubs"
+        },
+        {
+          "id": "hearts-7",
+          "rank": "7",
+          "suit": "hearts"
+        },
+        {
+          "id": "diamonds-A",
+          "rank": "A",
+          "suit": "diamonds"
+        },
+        {
+          "id": "spades-A",
+          "rank": "A",
+          "suit": "spades"
+        },
+        {
+          "id": "spades-J",
+          "rank": "J",
+          "suit": "spades"
+        },
+        {
+          "id": "diamonds-K",
+          "rank": "K",
+          "suit": "diamonds"
+        }
+      ],
+      "trickPoints": 0,
+      "tricksWonCount": 0
+    },
+    {
+      "id": "hOgQ2fMYvz_mV3_jAAAT",
+      "name": "d",
+      "socketId": "hOgQ2fMYvz_mV3_jAAAT",
+      "seatIndex": 3,
+      "teamId": "teamB",
+      "hand": [
+        {
+          "id": "diamonds-7",
+          "rank": "7",
+          "suit": "diamonds"
+        },
+        {
+          "id": "hearts-10",
+          "rank": "10",
+          "suit": "hearts"
         },
         {
           "id": "clubs-7",
           "rank": "7",
+          "suit": "clubs"
+        },
+        {
+          "id": "clubs-9",
+          "rank": "9",
           "suit": "clubs"
         },
         {
@@ -271,46 +182,134 @@
           "suit": "diamonds"
         },
         {
-          "id": "spades-Q",
+          "id": "clubs-Q",
           "rank": "Q",
-          "suit": "spades"
+          "suit": "clubs"
+        },
+        {
+          "id": "clubs-K",
+          "rank": "K",
+          "suit": "clubs"
+        },
+        {
+          "id": "hearts-J",
+          "rank": "J",
+          "suit": "hearts"
         }
       ],
-      "biddingOptions": {
-        "phase": "first-pass",
-        "currentTurnPlayerId": null,
-        "allowedActions": [
-          "bid",
+      "trickPoints": 0,
+      "tricksWonCount": 0
+    }
+  ],
+  "teams": [
+    {
+      "id": "teamA",
+      "playerIds": [
+        "NsvXXHkwmNVMYFp_AAAN",
+        "6zMEqU7XLVRA_UjwAAAQ"
+      ],
+      "collector": 0,
+      "distributor": 10
+    },
+    {
+      "id": "teamB",
+      "playerIds": [
+        "1hfKZMJ3LnDXGjCZAAAK",
+        "hOgQ2fMYvz_mV3_jAAAT"
+      ],
+      "collector": 0,
+      "distributor": 10
+    }
+  ],
+  "dealerIndex": 0,
+  "currentRound": {
+    "id": "round-1765605410624",
+    "dealerIndex": 0,
+    "startingPlayerIndex": 1,
+    "phase": "second-pass-bidding",
+    "bidding": {
+      "phase": "done",
+      "passedPlayerIdsSinceLastBid": [
+        "NsvXXHkwmNVMYFp_AAAN",
+        "6zMEqU7XLVRA_UjwAAAQ",
+        "hOgQ2fMYvz_mV3_jAAAT"
+      ],
+      "isOpenBidding": true,
+      "order": [
+        "1hfKZMJ3LnDXGjCZAAAK",
+        "6zMEqU7XLVRA_UjwAAAQ",
+        "hOgQ2fMYvz_mV3_jAAAT",
+        "NsvXXHkwmNVMYFp_AAAN"
+      ],
+      "turnIndex": 3,
+      "currentTurnPlayerId": null,
+      "hasBid": true,
+      "passesSinceLastBid": 3,
+      "partnerCallerId": null,
+      "partnerCalled": false,
+      "bids": [
+        {
+          "playerId": "1hfKZMJ3LnDXGjCZAAAK",
+          "type": "bid",
+          "value": 70
+        },
+        {
+          "playerId": "NsvXXHkwmNVMYFp_AAAN",
+          "type": "pass"
+        },
+        {
+          "playerId": "6zMEqU7XLVRA_UjwAAAQ",
+          "type": "pass"
+        },
+        {
+          "playerId": "hOgQ2fMYvz_mV3_jAAAT",
+          "type": "pass"
+        }
+      ],
+      "highestBid": 70,
+      "bidderId": "1hfKZMJ3LnDXGjCZAAAK",
+      "partnerForcedId": null,
+      "finalBidValue": null,
+      "secondPassPassedPlayerIds": []
+    },
+    "trump": {
+      "suit": "spades",
+      "card": {
+        "hidden": true
+      },
+      "revealed": false
+    },
+    "trickIndex": 0,
+    "tricks": [
+      {
+        "index": 0,
+        "cards": [],
+        "ledSuit": null,
+        "winnerPlayerId": null
+      }
+    ],
+    "deck": [],
+    "biddingOptions": {
+      "mode": "second-pass-bidding",
+      "highestBid": 70,
+      "highestBidderId": "1hfKZMJ3LnDXGjCZAAAK",
+      "passedPlayerIds": [],
+      "allowedActionsByPlayerId": {
+        "NsvXXHkwmNVMYFp_AAAN": [
+          "bid250",
           "pass"
         ],
-        "allowedBidValuesByPlayerId": {
-          "ceMnqPABftoUvh5TAAAN": [
-            80,
-            90,
-            100,
-            250
-          ],
-          "5S817aNgUqGJUYq4AAAQ": [],
-          "HiwNhSVGSnVkGAl8AAAT": [
-            80,
-            90,
-            100,
-            250
-          ],
-          "O0ntNsPqDcn3GMnhAAAL": [
-            90,
-            100,
-            250
-          ]
-        },
-        "canCallPartner": false,
-        "highestBid": 70,
-        "highestBidderId": "5S817aNgUqGJUYq4AAAQ",
-        "partnerForcedId": null,
-        "passedPlayerIdsSinceLastBid": [],
-        "isOpenBidding": true,
-        "passesSinceLastBid": 0
+        "1hfKZMJ3LnDXGjCZAAAK": [],
+        "6zMEqU7XLVRA_UjwAAAQ": [
+          "bid250",
+          "pass"
+        ],
+        "hOgQ2fMYvz_mV3_jAAAT": [
+          "bid250",
+          "pass"
+        ]
       }
-    },
-    "winnerTeamId": null
-  }
+    }
+  },
+  "winnerTeamId": null
+}
