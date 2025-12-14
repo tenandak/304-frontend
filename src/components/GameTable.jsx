@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 function GameTable({ roomId, playerId, gameState, onSendAction }) {
   const players = gameState?.players || [];
@@ -56,10 +56,40 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
   const turnId = override?.currentTurnPlayerId || null;
   const isMyOverrideTurn = turnId === playerId;
   const passedOverride = new Set(override?.passedPlayerIds || []);
+  const trickOptions = round?.trickOptions || {};
+  const trickTurnPlayerId = trickOptions.currentTurnPlayerId || null;
+  const isMyTrickTurn = trickTurnPlayerId === playerId;
+  const faceDownPlayableCardIds =
+    trickOptions.faceDownPlayableCardIdsByPlayerId?.[playerId] || [];
+  const playableCardIds =
+    trickOptions.playableCardIdsByPlayerId?.[playerId] ||
+    faceDownPlayableCardIds ||
+    [];
+  const myTrickActions =
+    trickOptions.allowedActionsByPlayerId?.[playerId] || [];
+  const canPlayFaceDown = myTrickActions.includes("playCardFaceDown");
+  const [playFaceDown, setPlayFaceDown] = useState(false);
+  useEffect(() => {
+    if (playableCardIds.length === 0 && faceDownPlayableCardIds.length > 0) {
+      setPlayFaceDown(true);
+    }
+  }, [playableCardIds, faceDownPlayableCardIds]);
+  const currentTrick =
+    round?.tricks?.find((t) => t.index === round?.trickIndex) ||
+    round?.tricks?.[round?.tricks?.length - 1] ||
+    null;
+  const currentTrickWinnerTeamId =
+    currentTrick?.winnerPlayerId &&
+    teams.find((team) =>
+      team.playerIds?.includes(currentTrick.winnerPlayerId)
+    )?.id;
   const bidActionType =
     round?.phase === "second-pass-bidding"
       ? "PLACE_SECOND_PASS_BID"
       : "PLACE_FIRST_BID";
+  const modePlayableIds = playFaceDown
+    ? faceDownPlayableCardIds
+    : playableCardIds;
 
   const suitSymbol = (suit) => {
     switch (suit) {
@@ -126,14 +156,103 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
       ) : (
         <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
           {me.hand.map((card, idx) => (
+            // During trick play, only allow cards the backend marks as playable
             <button
               key={idx}
               type="button"
               style={{ padding: "0.4rem 0.6rem", minWidth: "3.5rem" }}
+              disabled={
+                !isMyTrickTurn ||
+                (modePlayableIds.length > 0 &&
+                  !modePlayableIds.includes(card.id)) ||
+                (modePlayableIds.length === 0 &&
+                  (playableCardIds.length > 0 ||
+                    faceDownPlayableCardIds.length > 0))
+              }
+              onClick={() => {
+                const canPlayThisCard =
+                  isMyTrickTurn && modePlayableIds.includes(card.id);
+                if (!canPlayThisCard) return;
+                onSendAction({
+                  type: playFaceDown ? "PLAY_GUESS_FACE_DOWN" : "PLAY_CARD",
+                  payload: { cardId: card.id },
+                });
+              }}
             >
               {card.rank} {suitSymbol(card.suit)}
             </button>
           ))}
+        </div>
+      )}
+      {isMyTrickTurn &&
+        modePlayableIds.length === 0 &&
+        (playableCardIds.length > 0 || faceDownPlayableCardIds.length > 0) && (
+          <p style={{ marginTop: "0.25rem", color: "#a00" }}>
+            No legal moves.
+          </p>
+        )}
+      {canPlayFaceDown && (
+        <div style={{ marginTop: "0.5rem" }}>
+          <button
+            type="button"
+            onClick={() => setPlayFaceDown((prev) => !prev)}
+            disabled={!isMyTrickTurn || faceDownPlayableCardIds.length === 0}
+            style={{
+              padding: "0.4rem 0.8rem",
+              background: playFaceDown ? "#d22" : undefined,
+              color: playFaceDown ? "#fff" : undefined,
+            }}
+          >
+            {playFaceDown ? "Playing Face Down" : "Play Face Down"}
+          </button>
+          <div style={{ fontSize: "0.85rem", color: "#a00", marginTop: "0.25rem" }}>
+            Face-down play hides your card; backend enforces risk.
+          </div>
+        </div>
+      )}
+      {round?.phase?.startsWith("tricks") && (
+        <p style={{ marginTop: "0.25rem" }}>
+          {isMyTrickTurn ? "Your Turn" : "Waiting…"}
+        </p>
+      )}
+      {round?.phase?.startsWith("tricks") && (
+        <div style={{ marginTop: "0.5rem" }}>
+          <h4 style={{ margin: "0.25rem 0" }}>Current Trick</h4>
+          {!currentTrick || !currentTrick.cards?.length ? (
+            <p>No cards played yet.</p>
+          ) : (
+            <ul style={{ paddingLeft: "1rem", margin: 0 }}>
+              {currentTrick.cards.map((entry, idx) => {
+                const playerName =
+                  players.find((p) => p.id === entry.playerId)?.name ||
+                  entry.playerId;
+                const card = entry.card;
+                const revealCard =
+                  !entry.faceDown ||
+                  playerId === entry.playerId ||
+                  playerId === bidding?.bidderId;
+                const label = revealCard
+                  ? card
+                    ? `${card.rank ?? "?"} ${
+                        card.suit ? suitSymbol(card.suit) : ""
+                      }`.trim()
+                    : "Card"
+                  : "Face Down";
+                const extra = entry.isGuess ? " (Guess)" : "";
+                return (
+                  <li key={idx}>
+                    {playerName}: {label}
+                    {extra}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          {currentTrickWinnerTeamId && (
+            <p style={{ marginTop: "0.25rem" }}>
+              Trick winner: Team {currentTrickWinnerTeamId}
+            </p>
+          )}
         </div>
       )}
       {hiddenTrumpCard && (
