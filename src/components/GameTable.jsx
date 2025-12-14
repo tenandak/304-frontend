@@ -72,6 +72,8 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
   useEffect(() => {
     if (playableCardIds.length === 0 && faceDownPlayableCardIds.length > 0) {
       setPlayFaceDown(true);
+    } else if (faceDownPlayableCardIds.length === 0) {
+      setPlayFaceDown(false);
     }
   }, [playableCardIds, faceDownPlayableCardIds]);
   const currentTrick =
