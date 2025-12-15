@@ -24,12 +24,7 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
     options?.allowedActionsByPlayerId?.[playerId] || [];
   let allowedBids =
     options?.allowedBidValuesByPlayerId?.[playerId] || [];
-  if (
-    allowedBids.length === 0 &&
-    allowedActions.includes("bid250")
-  ) {
-    allowedBids = [250];
-  }
+  
   const isOpen =
     options?.isOpenBidding ?? bidding?.isOpenBidding ?? false;
   const passedIds =
@@ -233,6 +228,11 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
                   !entry.faceDown ||
                   playerId === entry.playerId ||
                   playerId === bidding?.bidderId;
+                const isTrumpCallerPlay =
+                  entry.faceDown &&
+                  entry.playerId === bidding?.bidderId &&
+                  round?.trump?.suit &&
+                  card?.suit === round.trump.suit;
                 const label = revealCard
                   ? card
                     ? `${card.rank ?? "?"} ${
@@ -240,7 +240,12 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
                       }`.trim()
                     : "Card"
                   : "Face Down";
-                const extra = entry.isGuess ? " (Guess)" : "";
+                const extra =
+                  isTrumpCallerPlay && playerId !== bidding?.bidderId
+                    ? " (Trump)"
+                    : entry.isGuess
+                    ? " (Guess)"
+                    : "";
                 return (
                   <li key={idx}>
                     {playerName}: {label}
@@ -263,6 +268,22 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
           <button
             type="button"
             style={{ padding: "0.4rem 0.6rem", minWidth: "3.5rem" }}
+            disabled={
+              !canPlayFaceDown ||
+              !isMyTrickTurn ||
+              !faceDownPlayableCardIds.includes(hiddenTrumpCard.id)
+            }
+            onClick={() => {
+              const canPlayTrumpFaceDown =
+                canPlayFaceDown &&
+                isMyTrickTurn &&
+                faceDownPlayableCardIds.includes(hiddenTrumpCard.id);
+              if (!canPlayTrumpFaceDown) return;
+              onSendAction({
+                type: "PLAY_GUESS_FACE_DOWN",
+                payload: { cardId: hiddenTrumpCard.id },
+              });
+            }}
           >
             {hiddenTrumpCard.rank} {suitSymbol(hiddenTrumpCard.suit)}
           </button>
