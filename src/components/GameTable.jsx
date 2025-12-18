@@ -1,4 +1,7 @@
 import { useEffect, useState } from "react";
+import "./GameTable.css";
+import PixelButton from "./ui/PixelButton";
+import { getInitials, getPlayerName, getSeatIndex } from "../utils/player";
 
 function GameTable({ roomId, playerId, gameState, onSendAction }) {
   const players = gameState?.players || [];
@@ -24,7 +27,10 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
     options?.allowedActionsByPlayerId?.[playerId] || [];
   let allowedBids =
     options?.allowedBidValuesByPlayerId?.[playerId] || [];
-  
+  if (allowedBids.length === 0 && allowedActions.includes("bid250")) {
+    allowedBids = [250];
+  }
+
   const isOpen =
     options?.isOpenBidding ?? bidding?.isOpenBidding ?? false;
   const passedIds =
@@ -80,6 +86,7 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
     teams.find((team) =>
       team.playerIds?.includes(currentTrick.winnerPlayerId)
     )?.id;
+  const trumpSuit = round?.trump?.suit || null;
   const bidActionType =
     round?.phase === "second-pass-bidding"
       ? "PLACE_SECOND_PASS_BID"
@@ -87,6 +94,32 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
   const modePlayableIds = playFaceDown
     ? faceDownPlayableCardIds
     : playableCardIds;
+  const seatMap = new Map();
+  const remaining = [];
+  players.forEach((p, idx) => {
+    const seat = getSeatIndex(p, undefined);
+    if (seat !== undefined && seat !== null) {
+      seatMap.set(seat, p);
+    } else {
+      remaining.push({ p, idx });
+    }
+  });
+  remaining.forEach(({ p }) => {
+    const targetSeat = Array.from({ length: 4 }, (_, i) => i).find(
+      (s) => !seatMap.has(s)
+    );
+    if (targetSeat !== undefined) seatMap.set(targetSeat, p);
+  });
+  const filledSeats = [0, 1, 2, 3].map((i) => seatMap.get(i));
+  const mySeatIndex = players.find((p) => (p?.id || p?.playerId) === playerId)?.seatIndex;
+  const seatLabelFromSeatIndex = (seat) =>
+    seat === 0 || seat === 2 ? "NS" : seat === 1 || seat === 3 ? "EW" : null;
+  const seatLabelFromPlayerId = (pid) => {
+    if (!pid) return null;
+    const player = players.find((p) => (p?.id || p?.playerId) === pid);
+    return seatLabelFromSeatIndex(player?.seatIndex);
+  };
+  const myTeamLabel = seatLabelFromSeatIndex(mySeatIndex);
 
   const suitSymbol = (suit) => {
     switch (suit) {
@@ -103,233 +136,222 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
     }
   };
 
+  const northSouth = [filledSeats[0], filledSeats[2]].filter(Boolean);
+  const eastWest = [filledSeats[1], filledSeats[3]].filter(Boolean);
+
+  const teamLabelByTeamId = new Map();
+  teams.forEach((team) => {
+    const seatLabel = (team.playerIds || [])
+      .map((pid) => seatLabelFromPlayerId(pid))
+      .find(Boolean);
+    if (seatLabel) {
+      teamLabelByTeamId.set(team.id, seatLabel);
+    }
+  });
+
+  const highestBidderTeamLabel = highestBidderId
+    ? seatLabelFromPlayerId(highestBidderId) ||
+      (() => {
+        const t = teams.find((team) => team.playerIds?.includes(highestBidderId));
+        return t ? teamLabelByTeamId.get(t.id) || null : null;
+      })()
+    : null;
+  const currentTrickWinnerTeamLabel =
+    teamLabelByTeamId.get(currentTrickWinnerTeamId) ||
+    seatLabelFromPlayerId(currentTrick?.winnerPlayerId) ||
+    null;
+
+  const nsTeam =
+    teams.find((t) => teamLabelByTeamId.get(t.id) === "NS") ||
+    teams[0] ||
+    null; // TODO: fall back to first team if mapping is unclear
+  const ewTeam =
+    teams.find((t) => teamLabelByTeamId.get(t.id) === "EW") ||
+    teams[1] ||
+    null; // TODO: fall back to second team if mapping is unclear
+
+  const humanizePhase = (value) => {
+    switch (value) {
+      case "first-pass-bidding":
+        return "First-pass bidding";
+      case "second-pass-bidding":
+        return "Second-pass bidding";
+      case "optional-250-bidding":
+        return "Optional 250 bidding";
+      case "trump-selection":
+        return "Trump selection";
+      default:
+        if (value?.startsWith("tricks")) return "Tricks";
+        return value || "Unknown";
+    }
+  };
+  const currentPhaseLabel = humanizePhase(phase);
+  const currentTurnName =
+    players.find((p) => (p.id || p.playerId) === currentTurnPlayerId)?.name ||
+    currentTurnPlayerId ||
+    "Unknown";
+
   return (
-    <div style={{ padding: "1rem" }}>
-      <h3>Game Table</h3>
-      <p>
-        Room: {roomId} • You are: {me?.name || "Unknown"} (ID: {playerId})
-      </p>
-
-      <h4>Teams</h4>
-      <ul>
-        {teams.map((team, index) => {
-          const playerIds = team.playerIds || [];
-          const teamPlayers = playerIds.map((id) =>
-            gameState?.players.find((p) => p.id === id || p.playerId === id)
-          );
-          return (
-            <li key={team.id || index} style={{ marginBottom: "0.5rem" }}>
-              <div>Team {team.id ?? index}</div>
-              <div>
-                Players:{" "}
-                {teamPlayers.map((p, idx) => {
-                  const label = p?.name || p?.playerName || playerIds[idx] || "Unknown";
-                  return (
-                    <span key={playerIds[idx] || idx}>
-                      {label}
-                      {idx < teamPlayers.length - 1 ? ", " : ""}
-                    </span>
-                  );
-                })}
-              </div>
-              <div>
-                Collector: {team.collector ?? "-"} | Distributor:{" "}
-                {team.distributor ?? "-"}
-              </div>
-            </li>
-          );
-        })}
-      </ul>
-
-      <h4>Current Phase</h4>
-      <p>{phase}</p>
-      {phase === "first-pass-bidding" && (
-        <p>First-pass bidding: anyone can bid, backend enforces rules.</p>
-      )}
-
-      <h4>Your Hand</h4>
-      {!me || !me.hand ? (
-        <p>Hand not available</p>
-      ) : (
-        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-          {me.hand.map((card, idx) => (
-            // During trick play, only allow cards the backend marks as playable
-            <button
-              key={idx}
-              type="button"
-              style={{ padding: "0.4rem 0.6rem", minWidth: "3.5rem" }}
-              disabled={
-                !isMyTrickTurn ||
-                (modePlayableIds.length > 0 &&
-                  !modePlayableIds.includes(card.id)) ||
-                (modePlayableIds.length === 0 &&
-                  (playableCardIds.length > 0 ||
-                    faceDownPlayableCardIds.length > 0))
-              }
-              onClick={() => {
-                const canPlayThisCard =
-                  isMyTrickTurn && modePlayableIds.includes(card.id);
-                if (!canPlayThisCard) return;
-                onSendAction({
-                  type: playFaceDown ? "PLAY_GUESS_FACE_DOWN" : "PLAY_CARD",
-                  payload: { cardId: card.id },
-                });
-              }}
-            >
-              {card.rank} {suitSymbol(card.suit)}
-            </button>
-          ))}
+    <div className="game-shell">
+      <div className="topbar">
+        <div className="brand">
+          304 Kattuvan Style <span className="tamil-mark">தமிழ்</span>
         </div>
-      )}
-      {isMyTrickTurn &&
-        modePlayableIds.length === 0 &&
-        (playableCardIds.length > 0 || faceDownPlayableCardIds.length > 0) && (
-          <p style={{ marginTop: "0.25rem", color: "#a00" }}>
-            No legal moves.
-          </p>
-        )}
-      {canPlayFaceDown && (
-        <div style={{ marginTop: "0.5rem" }}>
-          <button
-            type="button"
-            onClick={() => setPlayFaceDown((prev) => !prev)}
-            disabled={!isMyTrickTurn || faceDownPlayableCardIds.length === 0}
-            style={{
-              padding: "0.4rem 0.8rem",
-              background: playFaceDown ? "#d22" : undefined,
-              color: playFaceDown ? "#fff" : undefined,
-            }}
+        <div className="room-status">
+          <span className="status-dot" /> Connected
+          <span className="room-chip">Room {roomId}</span>
+          <PixelButton
+            variant="secondary"
+            onClick={() => navigator.clipboard?.writeText(roomId).catch(() => {})}
           >
-            {playFaceDown ? "Playing Face Down" : "Play Face Down"}
-          </button>
-          <div style={{ fontSize: "0.85rem", color: "#a00", marginTop: "0.25rem" }}>
-            Face-down play hides your card; backend enforces risk.
+            Copy
+          </PixelButton>
+        </div>
+      </div>
+
+      <div className="tableStage">
+        <div className="tableSurface">
+          <div className="felt">
+            <div className="table-center">
+              {round?.phase?.startsWith("tricks") ? (
+                currentTrick ? (
+                  <CenterPlayArea
+                    currentTrick={currentTrick}
+                    players={players}
+                    playerId={playerId}
+                    bidding={bidding}
+                    suitSymbol={suitSymbol}
+                    directionFromPlayerId={(pid) => {
+                      const player = players.find((p) => (p?.id || p?.playerId) === pid);
+                      const seat = player?.seatIndex;
+                      if (seat === 0) return "N";
+                      if (seat === 1) return "E";
+                      if (seat === 2) return "S";
+                      if (seat === 3) return "W";
+                      return null;
+                    }}
+                  />
+                ) : (
+                  <div className="meta">Waiting for play…</div>
+                )
+              ) : (
+                <div className="meta">Table is ready.</div>
+              )}
+            </div>
+          </div>
+
+          <div className="seat seat--north">
+            <Seat
+              direction="north"
+              teamLabel="NS"
+              player={filledSeats[0]}
+              isYou={(filledSeats[0]?.id || filledSeats[0]?.playerId) === playerId}
+              isTurn={
+                !!filledSeats[0] &&
+                currentTurnPlayerId === (filledSeats[0]?.id || filledSeats[0]?.playerId)
+              }
+              isPartner={
+                !!filledSeats[0] &&
+                myTeamLabel === "NS" &&
+                (filledSeats[0]?.id || filledSeats[0]?.playerId) !== playerId
+              }
+            />
+          </div>
+          <div className="seat seat--east">
+            <Seat
+              direction="east"
+              teamLabel="EW"
+              player={filledSeats[1]}
+              isYou={(filledSeats[1]?.id || filledSeats[1]?.playerId) === playerId}
+              isTurn={
+                !!filledSeats[1] &&
+                currentTurnPlayerId === (filledSeats[1]?.id || filledSeats[1]?.playerId)
+              }
+              isPartner={
+                !!filledSeats[1] &&
+                myTeamLabel === "EW" &&
+                (filledSeats[1]?.id || filledSeats[1]?.playerId) !== playerId
+              }
+            />
+          </div>
+          <div className="seat seat--south">
+            <Seat
+              direction="south"
+              teamLabel="NS"
+              player={filledSeats[2]}
+              isYou={(filledSeats[2]?.id || filledSeats[2]?.playerId) === playerId}
+              isTurn={
+                !!filledSeats[2] &&
+                currentTurnPlayerId === (filledSeats[2]?.id || filledSeats[2]?.playerId)
+              }
+              isPartner={
+                !!filledSeats[2] &&
+                myTeamLabel === "NS" &&
+                (filledSeats[2]?.id || filledSeats[2]?.playerId) !== playerId
+              }
+            />
+          </div>
+          <div className="seat seat--west">
+            <Seat
+              direction="west"
+              teamLabel="EW"
+              player={filledSeats[3]}
+              isYou={(filledSeats[3]?.id || filledSeats[3]?.playerId) === playerId}
+              isTurn={
+                !!filledSeats[3] &&
+                currentTurnPlayerId === (filledSeats[3]?.id || filledSeats[3]?.playerId)
+              }
+              isPartner={
+                !!filledSeats[3] &&
+                myTeamLabel === "EW" &&
+                (filledSeats[3]?.id || filledSeats[3]?.playerId) !== playerId
+              }
+            />
           </div>
         </div>
-      )}
-      {round?.phase?.startsWith("tricks") && (
-        <p style={{ marginTop: "0.25rem" }}>
-          {isMyTrickTurn ? "Your Turn" : "Waiting…"}
-        </p>
-      )}
-      {round?.phase?.startsWith("tricks") && (
-        <div style={{ marginTop: "0.5rem" }}>
-          <h4 style={{ margin: "0.25rem 0" }}>Current Trick</h4>
-          {!currentTrick || !currentTrick.cards?.length ? (
-            <p>No cards played yet.</p>
-          ) : (
-            <ul style={{ paddingLeft: "1rem", margin: 0 }}>
-              {currentTrick.cards.map((entry, idx) => {
-                const playerName =
-                  players.find((p) => p.id === entry.playerId)?.name ||
-                  entry.playerId;
-                const card = entry.card;
-                const revealCard =
-                  !entry.faceDown ||
-                  playerId === entry.playerId ||
-                  playerId === bidding?.bidderId;
-                const isTrumpCallerPlay =
-                  entry.faceDown &&
-                  entry.playerId === bidding?.bidderId &&
-                  round?.trump?.suit &&
-                  card?.suit === round.trump.suit;
-                const label = revealCard
-                  ? card
-                    ? `${card.rank ?? "?"} ${
-                        card.suit ? suitSymbol(card.suit) : ""
-                      }`.trim()
-                    : "Card"
-                  : "Face Down";
-                const extra =
-                  isTrumpCallerPlay && playerId !== bidding?.bidderId
-                    ? " (Trump)"
-                    : entry.isGuess
-                    ? " (Guess)"
-                    : "";
-                return (
-                  <li key={idx}>
-                    {playerName}: {label}
-                    {extra}
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-          {currentTrickWinnerTeamId && (
-            <p style={{ marginTop: "0.25rem" }}>
-              Trick winner: Team {currentTrickWinnerTeamId}
-            </p>
-          )}
-        </div>
-      )}
-      {hiddenTrumpCard && (
-        <div style={{ marginTop: "0.5rem" }}>
-          <h4 style={{ margin: "0.25rem 0" }}>Trump Card</h4>
-          <button
-            type="button"
-            style={{ padding: "0.4rem 0.6rem", minWidth: "3.5rem" }}
-            disabled={
-              !canPlayFaceDown ||
-              !isMyTrickTurn ||
-              !faceDownPlayableCardIds.includes(hiddenTrumpCard.id)
-            }
-            onClick={() => {
-              const canPlayTrumpFaceDown =
-                canPlayFaceDown &&
-                isMyTrickTurn &&
-                faceDownPlayableCardIds.includes(hiddenTrumpCard.id);
-              if (!canPlayTrumpFaceDown) return;
-              onSendAction({
-                type: "PLAY_GUESS_FACE_DOWN",
-                payload: { cardId: hiddenTrumpCard.id },
-              });
-            }}
-          >
-            {hiddenTrumpCard.rank} {suitSymbol(hiddenTrumpCard.suit)}
-          </button>
-        </div>
-      )}
-
-      <div style={{ margin: "1rem 0" }}>
-        <button onClick={() => onSendAction({ type: "ping" })}>
-          Send Test Action
-        </button>
-      </div>
-      <div style={{ margin: "1rem 0" }}>
-        <h4>Debug Actions</h4>
-        <button
-          style={{ marginRight: "0.5rem" }}
-          onClick={() => onSendAction({ type: "NOOP_DEBUG" })}
-        >
-          Debug: Send NOOP action
-        </button>
-        <button onClick={() => console.log("gameState", gameState)}>
-          Debug: Log gameState
-        </button>
       </div>
 
-      {isBidding && (
-        <div style={{ marginTop: 20, padding: 10, border: "1px solid #ccc" }}>
-          <h4>
-            {round?.phase === "second-pass-bidding"
-              ? "Second-Pass (250) Bidding"
-              : "First-Pass Bidding"}
-          </h4>
-          <p>
-            Current turn:{" "}
-            {players.find((p) => p.id === currentTurnPlayerId)?.name ||
-              currentTurnPlayerId ||
-              "Unknown"}
-          </p>
-          <p>
-            {round?.phase === "second-pass-bidding"
-              ? "Second-pass: non-highest players may bid 250 or pass."
-              : "Choose a bid or call Partner."}
-          </p>
-          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+      <Scoreboard
+        north={filledSeats[0]}
+        south={filledSeats[2]}
+        east={filledSeats[1]}
+        west={filledSeats[3]}
+        nsTeam={nsTeam}
+        ewTeam={ewTeam}
+        highestBidderTeamLabel={highestBidderTeamLabel}
+        currentTrickWinnerTeamLabel={currentTrickWinnerTeamLabel}
+      />
+
+      <div className="action-tray">
+        <div className="tray-header">
+          <div className="phase-label">{currentPhaseLabel}</div>
+          <div className="phase-info">
+            {isBidding
+              ? round?.phase === "second-pass-bidding"
+                ? "Second-pass: 250 or pass if allowed."
+                : "Choose a bid or partner/pass."
+              : phase?.startsWith("tricks")
+              ? isMyTrickTurn
+                ? "Your turn to play."
+                : "Waiting for other players."
+              : phase === "trump-selection"
+              ? "Select a suit and a card to reveal trump."
+              : isOptional
+              ? "Optional 250: bid or pass."
+              : "Follow the round instructions."}
+          </div>
+          {isBidding && <div className="phase-sub">Current turn: {currentTurnName}</div>}
+          {phase?.startsWith("tricks") && (
+            <div className="phase-sub">{isMyTrickTurn ? "Your turn" : "Waiting…"}</div>
+          )}
+        </div>
+
+        {isBidding && (
+          <div className="tray-actions">
             {allowedBids.map((bid) => (
-              <button
+              <PixelButton
                 key={bid}
+                variant="primary"
                 onClick={() =>
                   onSendAction({
                     type: bidActionType,
@@ -338,10 +360,11 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
                 }
               >
                 Bid {bid}
-              </button>
+              </PixelButton>
             ))}
             {options?.canCallPartner && isMyTurn && (
-              <button
+              <PixelButton
+                variant="secondary"
                 onClick={() =>
                   onSendAction({
                     type: bidActionType,
@@ -350,10 +373,11 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
                 }
               >
                 Partner (Pass)
-              </button>
+              </PixelButton>
             )}
             {isOpen && !isHighestBidder && !iPassed && (
-              <button
+              <PixelButton
+                variant="secondary"
                 onClick={() =>
                   onSendAction({
                     type: bidActionType,
@@ -362,145 +386,277 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
                 }
               >
                 Pass
-              </button>
+              </PixelButton>
             )}
           </div>
-          {hasBid && (
-            <p style={{ marginTop: "0.5rem" }}>
-              Passes since last bid: {bidding?.passesSinceLastBid ?? 0}
-            </p>
-          )}
-          <p style={{ marginTop: "0.25rem" }}>
-            Highest bid: {highestBidValue ?? "None"} by{" "}
-            {highestBidder?.name || highestBidderId || "N/A"}
-          </p>
-          <p style={{ marginTop: "0.25rem" }}>
-            Open bidding: {isOpen ? "Yes" : "No"}
-          </p>
-          <p style={{ marginTop: "0.25rem" }}>
-            Passes: {passedIds.length}/3
-          </p>
-        </div>
-      )}
-      {isOptional && (
-        <div style={{ marginTop: 20, padding: 10, border: "1px solid #ccc" }}>
-          <h4>Optional 250 Bidding</h4>
-          <p>
-            Highest bid: {override?.highestBid ?? "None"} by{" "}
-            {players.find((p) => p.id === override?.highestBidderId)?.name ||
-              override?.highestBidderId ||
-              "N/A"}
-          </p>
-          <p>
-            Optional 250 bidding — current turn:{" "}
-            {players.find((p) => p.id === turnId)?.name || turnId || "Unknown"}
-          </p>
-          {!isMyOverrideTurn ? (
-            <p>Waiting…</p>
-          ) : (
-            <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-              <button
-                onClick={() =>
-                  onSendAction({
-                    type: "PLACE_SECOND_PASS_BID",
-                    payload: { type: "bid", value: 250 },
-                  })
-                }
+        )}
+
+        {isOptional && (
+          <div className="tray-actions">
+            {!isMyOverrideTurn ? (
+              <div className="meta">Waiting…</div>
+            ) : (
+              <>
+                <PixelButton
+                  variant="primary"
+                  onClick={() =>
+                    onSendAction({
+                      type: "PLACE_SECOND_PASS_BID",
+                      payload: { type: "bid", value: 250 },
+                    })
+                  }
+                >
+                  Bid 250
+                </PixelButton>
+                <PixelButton
+                  variant="secondary"
+                  onClick={() =>
+                    onSendAction({
+                      type: "PLACE_SECOND_PASS_BID",
+                      payload: { type: "pass" },
+                    })
+                  }
+                >
+                  Pass
+                </PixelButton>
+              </>
+            )}
+          </div>
+        )}
+
+        {phase === "trump-selection" && playerId === bidding?.bidderId && (
+          <div className="tray-actions">
+            {["hearts", "spades", "diamonds", "clubs"].map((suit) => (
+              <PixelButton
+                key={suit}
+                variant="secondary"
+                onClick={() => setSelectedSuit(suit)}
               >
-                Bid 250
-              </button>
-              <button
-                onClick={() =>
-                  onSendAction({
-                    type: "PLACE_SECOND_PASS_BID",
-                    payload: { type: "pass" },
-                  })
-                }
-              >
-                Pass
-              </button>
-            </div>
-          )}
-          <p style={{ marginTop: "0.25rem" }}>
-            Passes so far: {passedOverride.size}
-          </p>
-        </div>
-      )}
-      {highestBidValue && (
-        <p style={{ marginTop: "0.5rem" }}>
-          Current highest bid: {highestBidValue} by{" "}
-          {highestBidder?.name || highestBidderId}
-        </p>
-      )}
-      {phase === "trump-selection" && (
-        <div style={{ marginTop: 20, padding: 10, border: "1px solid #ccc" }}>
-          <h4>Trump Selection</h4>
-          <p>
-            Bidder:{" "}
-            {players.find((p) => p.id === bidding?.bidderId)?.name ||
-              bidding?.bidderId ||
-              "Unknown"}
-          </p>
-          {playerId !== bidding?.bidderId ? (
-            <p>Waiting for bidder…</p>
-          ) : (
-            <>
-              <p>Select a suit, then choose a card of that suit.</p>
-              <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-                {["hearts", "spades", "diamonds", "clubs"].map((suit) => (
-                  <button
-                    key={suit}
-                    type="button"
-                    onClick={() => setSelectedSuit(suit)}
-                    style={{
-                      border:
-                        selectedSuit === suit
-                          ? "2px solid #333"
-                          : "1px solid #ccc",
-                    }}
-                  >
-                    {suit}
-                  </button>
-                ))}
+                {suit}
+              </PixelButton>
+            ))}
+            {selectedSuit && (
+              <div className="hand-grid">
+                {(me?.hand || [])
+                  .filter((card) => card.suit === selectedSuit)
+                  .map((card) => (
+                    <button
+                      key={card.id || card.rank + card.suit}
+                      className="card-btn"
+                      type="button"
+                      onClick={() =>
+                        onSendAction({
+                          type: "SELECT_TRUMP",
+                          payload: { suit: selectedSuit, cardId: card.id },
+                        })
+                      }
+                    >
+                      {card.rank} {suitSymbol(card.suit)}
+                    </button>
+                  ))}
               </div>
-              {selectedSuit && (
-                <div style={{ marginTop: "0.5rem" }}>
-                  <p>Choose a card to reveal as trump:</p>
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: "0.5rem",
-                      flexWrap: "wrap",
-                    }}
-                  >
-                    {(me?.hand || [])
-                      .filter((card) => card.suit === selectedSuit)
-                      .map((card) => (
-                        <button
-                          key={card.id || card.rank + card.suit}
-                          type="button"
-                          onClick={() =>
-                            onSendAction({
-                              type: "SELECT_TRUMP",
-                              payload: { suit: selectedSuit, cardId: card.id },
-                            })
-                          }
-                        >
-                          {card.rank} {suitSymbol(card.suit)}
-                        </button>
-                      ))}
-                  </div>
-                </div>
-              )}
-            </>
-          )}
+            )}
+          </div>
+        )}
+      </div>
+
+      <div className="hand-dock">
+        <div className="hand-label">Your Hand</div>
+        <div className="hand-scroll">
+          <div className="hand-row">
+            {(me?.hand || []).map((card, idx) => {
+              const isPlayable =
+                isMyTrickTurn &&
+                modePlayableIds.length > 0 &&
+                modePlayableIds.includes(card.id);
+              const blockedByRules =
+                modePlayableIds.length === 0 &&
+                (playableCardIds.length > 0 || faceDownPlayableCardIds.length > 0);
+              const disabled = !isPlayable || blockedByRules;
+              return (
+                <button
+                  key={idx}
+                  type="button"
+                  className={`hand-card ${isPlayable ? "playable" : ""} ${
+                    disabled ? "disabled" : ""
+                  }`}
+                  onClick={() => {
+                    if (!isPlayable) return;
+                    onSendAction({
+                      type: playFaceDown ? "PLAY_GUESS_FACE_DOWN" : "PLAY_CARD",
+                      payload: { cardId: card.id },
+                    });
+                  }}
+                >
+                  <span className="hand-rank">{card.rank}</span>
+                  <span className="hand-suit">{suitSymbol(card.suit)}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
-      )}
-      <pre style={{ background: "#f5f5f5", padding: "1rem", overflow: "auto" }}>
-        {JSON.stringify(gameState, null, 2)}
-      </pre>
+        {canPlayFaceDown && (
+          <div className="face-row">
+            <PixelButton
+              variant="secondary"
+              onClick={() => setPlayFaceDown((prev) => !prev)}
+              disabled={!isMyTrickTurn || faceDownPlayableCardIds.length === 0}
+            >
+              {playFaceDown ? "Playing Face Down" : "Play Face Down"}
+            </PixelButton>
+            <div className="meta warning">Face-down play hides your card; backend enforces risk.</div>
+          </div>
+        )}
+      </div>
+
+      <details className="debugDock">
+        <summary>Debug</summary>
+        <p className="meta">Phase: {phase}</p>
+        <pre className="state-pre">{JSON.stringify(gameState, null, 2)}</pre>
+      </details>
     </div>
   );
 }
 
 export default GameTable;
+
+function CenterPlayArea({
+  currentTrick,
+  players,
+  playerId,
+  bidding,
+  trumpSuit,
+  suitSymbol,
+  directionFromPlayerId,
+}) {
+  const slots = { N: null, E: null, S: null, W: null };
+
+  currentTrick?.cards?.forEach((entry) => {
+    const dir = directionFromPlayerId(entry.playerId);
+    if (dir && !slots[dir]) {
+      slots[dir] = entry;
+    }
+  });
+
+  const renderCard = (entry) => {
+    if (!entry) return null;
+    const playerName =
+      players.find((p) => p.id === entry.playerId)?.name || entry.playerId;
+    const card = entry.card;
+    const revealCard =
+      !entry.faceDown || playerId === entry.playerId || playerId === bidding?.bidderId;
+    const isTrumpCallerPlay =
+      entry.faceDown &&
+      entry.playerId === bidding?.bidderId &&
+      trumpSuit &&
+      card?.suit === trumpSuit;
+    const label = revealCard
+      ? card
+        ? `${card.rank ?? "?"} ${card.suit ? suitSymbol(card.suit) : ""}`.trim()
+        : "Card"
+      : "Face Down";
+    const extra =
+      isTrumpCallerPlay && playerId !== bidding?.bidderId
+        ? " (Trump)"
+        : entry.isGuess
+        ? " (Guess)"
+        : "";
+    const faceClass = revealCard ? "card-face" : "card-back";
+
+    return (
+      <>
+        <div className="slot-name">{playerName}</div>
+        <div className={`slot-card ${faceClass}`}>
+          <span className="card-label">
+            {label}
+            {extra}
+          </span>
+        </div>
+      </>
+    );
+  };
+
+  const directions = ["N", "E", "S", "W"];
+
+  return (
+    <div className="center-grid">
+      {directions.map((dir) => (
+        <div key={dir} className={`center-slot slot-${dir.toLowerCase()}`}>
+          {slots[dir] ? (
+            renderCard(slots[dir])
+          ) : (
+            <div className="slot-placeholder">Waiting…</div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function Scoreboard({
+  north,
+  south,
+  east,
+  west,
+  nsTeam,
+  ewTeam,
+  highestBidderTeamLabel,
+  currentTrickWinnerTeamLabel,
+}) {
+  const nsNames = [north, south].filter(Boolean).map(getPlayerName).join(", ") || "TBD";
+  const ewNames = [east, west].filter(Boolean).map(getPlayerName).join(", ") || "TBD";
+  const nsHighlight =
+    highestBidderTeamLabel === "NS" || currentTrickWinnerTeamLabel === "NS";
+  const ewHighlight =
+    highestBidderTeamLabel === "EW" || currentTrickWinnerTeamLabel === "EW";
+
+  const renderTeamRow = (label, names, team, highlight) => (
+    <div className={`score-row ${highlight ? "score-highlight" : ""}`}>
+      <div className="score-label">Team {label}</div>
+      <div className="score-names" title={names}>
+        {names}
+      </div>
+      <div className="score-meta">
+        Collector: {team?.collector ?? "-"} | Distributor: {team?.distributor ?? "-"}
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="scoreboard-panel">
+      {renderTeamRow("NS", nsNames, nsTeam, nsHighlight)}
+      {renderTeamRow("EW", ewNames, ewTeam, ewHighlight)}
+    </div>
+  );
+}
+
+function Seat({ direction, player, isYou, isTurn, teamLabel, isPartner }) {
+  const name = getPlayerName(player) || "Open Seat";
+  const initials = player ? getInitials(name) : "?";
+  const hasPlayer = !!player;
+  const plaqueClasses = ["seat-plaque"];
+  if (isTurn) plaqueClasses.push("seat-turn");
+  if (isYou) plaqueClasses.push("seat-you");
+
+  return (
+    <div className={`seat-block seat-${direction}`}>
+      <div className={plaqueClasses.join(" ")}>
+        <div className="seat-top">
+          <div className="seat-avatar">{initials}</div>
+          <div className="seat-text">
+            <div className="seat-name" title={name}>
+              {name}
+            </div>
+            <div className="seat-team">Team {teamLabel || "?"}</div>
+          </div>
+        </div>
+        <div className="seat-badges">
+          {isYou && <span className="badge-chip badge-you">YOU</span>}
+          {isTurn && <span className="badge-chip badge-turn">TURN</span>}
+          {isPartner && <span className="badge-chip badge-partner">PARTNER</span>}
+          {!hasPlayer && <span className="badge-chip">Open Seat</span>}
+        </div>
+      </div>
+    </div>
+  );
+}
