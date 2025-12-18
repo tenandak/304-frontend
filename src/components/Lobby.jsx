@@ -1,43 +1,102 @@
 import { useState } from "react";
+import "./Lobby.css";
+import PixelButton from "./ui/PixelButton";
+import PixelInput from "./ui/PixelInput";
+import PixelPanel from "./ui/PixelPanel";
+import { getPlayerName } from "../utils/player";
 
 function Lobby({ onCreateRoom, onJoinRoom }) {
   const [playerName, setPlayerName] = useState("");
   const [roomInput, setRoomInput] = useState("");
 
+  const trimmedName = playerName.trim();
+  const trimmedRoom = roomInput.trim();
+  const canCreate = trimmedName.length > 0;
+  const canJoin = trimmedName.length > 0 && trimmedRoom.length > 0;
+
   return (
-    <div style={{ padding: "1rem" }}>
-      <h2>Lobby</h2>
-      <p style={{ color: "#555" }}>
-        Enter your name and create a room, or join with a room code.
-      </p>
-      <div style={{ marginBottom: "0.5rem" }}>
-        <label>
-          Player Name:
-          <input
-            type="text"
+    <div className="lobby-shell">
+      <div className="kolam-border" aria-hidden="true" />
+      <PixelPanel className="lobby-hero">
+        <div className="cow-banner">
+          <div className="animal-row">
+            <div className="cows">
+              {Array.from({ length: 2 }).map((_, i) => (
+                <span key={`l${i}`} className="cow cow-left" aria-hidden="true">
+                  🐄
+                </span>
+              ))}
+            {Array.from({ length: 2 }).map((_, i) => (
+              <span key={`ml${i}`} className="mango" aria-hidden="true">
+                🥭
+              </span>
+            ))}
+            {Array.from({ length: 2 }).map((_, i) => (
+              <span key={`pl${i}`} className="peacock peacock-left" aria-hidden="true">
+                🦚
+              </span>
+            ))}
+            <div className="cow-center">304</div>
+            {Array.from({ length: 2 }).map((_, i) => (
+              <span key={`pr${i}`} className="peacock peacock-right" aria-hidden="true">
+                🦚
+              </span>
+            ))}
+            {Array.from({ length: 2 }).map((_, i) => (
+              <span key={`mr${i}`} className="mango" aria-hidden="true">
+                🥭
+              </span>
+            ))}
+            {Array.from({ length: 2 }).map((_, i) => (
+              <span key={`r${i}`} className="cow cow-right" aria-hidden="true">
+                🐄
+              </span>
+            ))}
+            </div>
+          </div>
+          <div className="cow-title">Kattuvan Style</div>
+          <div className="cow-subtitle">A Sri Lankan Tamil Card Game</div>
+        </div>
+      </PixelPanel>
+
+      <main className="lobby-main">
+        <PixelPanel className="lobby-card" title="Registration Desk">
+          <PixelInput
+            label="Player Name"
             value={playerName}
             onChange={(e) => setPlayerName(e.target.value)}
-            style={{ marginLeft: "0.5rem" }}
+            placeholder="Enter your name"
+            autoComplete="name"
+            hint={!canCreate ? "Name required to create or join." : undefined}
           />
-        </label>
-      </div>
-      <div style={{ marginBottom: "0.5rem" }}>
-        <label>
-          Room ID:
-          <input
-            type="text"
+          <PixelInput
+            label="Room Code"
             value={roomInput}
             onChange={(e) => setRoomInput(e.target.value)}
-            style={{ marginLeft: "0.5rem" }}
+            placeholder="e.g. 12AB"
+            autoComplete="off"
+            hint={!canJoin && trimmedRoom.length === 0 ? "Room code required to join." : undefined}
           />
-        </label>
-      </div>
-      <div style={{ display: "flex", gap: "0.5rem" }}>
-        <button onClick={() => onCreateRoom(playerName)}>Create Room</button>
-        <button onClick={() => onJoinRoom(roomInput, playerName)}>
-          Join Room
-        </button>
-      </div>
+          <div className="actions">
+            <PixelButton
+              variant="primary"
+              onClick={() => onCreateRoom(trimmedName)}
+              disabled={!canCreate}
+              fullWidth
+            >
+              Create Room
+            </PixelButton>
+            <PixelButton
+              variant="primary"
+              onClick={() => onJoinRoom(trimmedRoom, trimmedName)}
+              disabled={!canJoin}
+              fullWidth
+            >
+              Join Room
+            </PixelButton>
+          </div>
+        </PixelPanel>
+      </main>
     </div>
   );
 }

@@ -1,0 +1,136 @@
+/* Global pixel-art theme */
+@import url("https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap");
+
+:root {
+  /* Palette inspired by Sri Lankan Tamil card nights */
+  --felt-green: #0f4d2b;
+  --deep-maroon: #4b1c2f;
+  --turmeric-gold: #d9a300;
+  --ocean-teal: #0f5f5c;
+  --palm-beige: #f3e4c7;
+
+  --panel-border: #1a1a1a;
+  --panel-shadow: rgba(0, 0, 0, 0.35);
+  --scanline-opacity: 0.08; /* set to 0 to disable scanlines */
+
+  color: var(--palm-beige);
+  background: linear-gradient(135deg, var(--felt-green), var(--ocean-teal));
+  font-family: "Press Start 2P", "Courier New", monospace;
+  line-height: 1.5;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: radial-gradient(circle at 20% 20%, #16472b 0%, #0b2c1c 40%, #0a2014 100%),
+    linear-gradient(135deg, var(--felt-green), var(--ocean-teal));
+  color: var(--palm-beige);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--turmeric-gold);
+}
+
+a:hover {
+  color: #ffcf40;
+}
+
+button {
+  font: inherit;
+  color: var(--palm-beige);
+  background: var(--deep-maroon);
+  border: 3px solid var(--turmeric-gold);
+  padding: 0.55rem 0.9rem;
+  box-shadow: 2px 2px 0 var(--panel-border);
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+button:focus-visible,
+input:focus-visible {
+  outline: 3px solid var(--turmeric-gold);
+  outline-offset: 2px;
+}
+
+input {
+  font: inherit;
+  color: var(--panel-border);
+  background: #fff;
+  border: 2px solid var(--turmeric-gold);
+  padding: 0.5rem 0.6rem;
+  min-width: 0;
+}
+
+.pixel-panel {
+  position: relative;
+  background: rgba(0, 0, 0, 0.18);
+  border: 3px solid var(--panel-border);
+  box-shadow:
+    inset 0 0 0 2px var(--deep-maroon),
+    inset 0 0 18px var(--panel-shadow),
+    4px 4px 0 var(--panel-border);
+  padding: 1rem;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.pixel-panel::after {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, var(--scanline-opacity)),
+    rgba(255, 255, 255, var(--scanline-opacity)) 1px,
+    transparent 2px,
+    transparent 3px
+  );
+}
+
+.pixel-panel h2,
+.pixel-panel h3,
+.pixel-panel h4 {
+  margin-top: 0;
+  color: var(--turmeric-gold);
+}
+
+.stack {
+  display: grid;
+  gap: 1rem;
+}
+
+@media (max-width: 640px) {
+  :root {
+    font-size: 12px;
+  }
+  .pixel-panel {
+    padding: 0.85rem;
+  }
+  button {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
