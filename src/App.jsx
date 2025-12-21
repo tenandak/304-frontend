@@ -93,7 +93,7 @@ export default function App() {
   }
 
   return (
-    <div style={{ padding: "1.5rem", maxWidth: 960, margin: "0 auto" }}>
+    <div style={{ padding: "1.5rem", margin: "0 auto" }}>
       <header
         style={{
           padding: "0.5rem 0",

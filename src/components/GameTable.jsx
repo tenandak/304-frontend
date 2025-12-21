@@ -192,59 +192,47 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
     "Unknown";
 
   return (
-    <div className="game-shell">
-      <div className="topbar">
-        <div className="brand">
-          304 Kattuvan Style <span className="tamil-mark">தமிழ்</span>
-        </div>
-        <div className="room-status">
-          <span className="status-dot" /> Connected
-          <span className="room-chip">Room {roomId}</span>
-          <PixelButton
-            variant="secondary"
-            onClick={() => navigator.clipboard?.writeText(roomId).catch(() => {})}
-          >
-            Copy
-          </PixelButton>
-        </div>
-      </div>
-
-      <div className="tableStage">
-        <div className="tableSurface">
-          <div className="felt">
-            <div className="table-center">
-              {round?.phase?.startsWith("tricks") ? (
-                currentTrick ? (
-                  <CenterPlayArea
-                    currentTrick={currentTrick}
-                    players={players}
-                    playerId={playerId}
-                    bidding={bidding}
-                    suitSymbol={suitSymbol}
-                    directionFromPlayerId={(pid) => {
-                      const player = players.find((p) => (p?.id || p?.playerId) === pid);
-                      const seat = player?.seatIndex;
-                      if (seat === 0) return "N";
-                      if (seat === 1) return "E";
-                      if (seat === 2) return "S";
-                      if (seat === 3) return "W";
-                      return null;
-                    }}
-                  />
+    <div className="game-root">
+      <div className="play-area room-shell">
+        <div className="table-grid">
+          <div aria-hidden="true" />
+          <div className="table-center-cell">
+              <DeckStack />
+              {round?.phase === "first-pass-bidding" && <DealAnimation key={round?.id || "deal"} />}
+              <div className="table-center">
+                {round?.phase?.startsWith("tricks") ? (
+                  currentTrick ? (
+                    <CenterPlayArea
+                      currentTrick={currentTrick}
+                      players={players}
+                      playerId={playerId}
+                      bidding={bidding}
+                      suitSymbol={suitSymbol}
+                      directionFromPlayerId={(pid) => {
+                        const player = players.find((p) => (p?.id || p?.playerId) === pid);
+                        const seat = player?.seatIndex;
+                        if (seat === 0) return "N";
+                        if (seat === 1) return "E";
+                        if (seat === 2) return "S";
+                        if (seat === 3) return "W";
+                        return null;
+                      }}
+                    />
+                  ) : (
+                    <div className="meta">Waiting for play…</div>
+                  )
                 ) : (
-                  <div className="meta">Waiting for play…</div>
-                )
-              ) : (
-                <div className="meta">Table is ready.</div>
-              )}
-            </div>
+                  <div className="meta">Table is ready.</div>
+                )}
+              </div>
           </div>
 
-          <div className="seat seat--north">
+          <div className="seat seat-north">
             <Seat
               direction="north"
               teamLabel="NS"
               player={filledSeats[0]}
+              isDealer={filledSeats[0]?.seatIndex === round?.dealerIndex}
               isYou={(filledSeats[0]?.id || filledSeats[0]?.playerId) === playerId}
               isTurn={
                 !!filledSeats[0] &&
@@ -257,11 +245,12 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
               }
             />
           </div>
-          <div className="seat seat--east">
+          <div className="seat seat-east">
             <Seat
               direction="east"
               teamLabel="EW"
               player={filledSeats[1]}
+              isDealer={filledSeats[1]?.seatIndex === round?.dealerIndex}
               isYou={(filledSeats[1]?.id || filledSeats[1]?.playerId) === playerId}
               isTurn={
                 !!filledSeats[1] &&
@@ -274,11 +263,12 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
               }
             />
           </div>
-          <div className="seat seat--south">
+          <div className="seat seat-south">
             <Seat
               direction="south"
               teamLabel="NS"
               player={filledSeats[2]}
+              isDealer={filledSeats[2]?.seatIndex === round?.dealerIndex}
               isYou={(filledSeats[2]?.id || filledSeats[2]?.playerId) === playerId}
               isTurn={
                 !!filledSeats[2] &&
@@ -291,11 +281,12 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
               }
             />
           </div>
-          <div className="seat seat--west">
+          <div className="seat seat-west">
             <Seat
               direction="west"
               teamLabel="EW"
               player={filledSeats[3]}
+              isDealer={filledSeats[3]?.seatIndex === round?.dealerIndex}
               isYou={(filledSeats[3]?.id || filledSeats[3]?.playerId) === playerId}
               isTurn={
                 !!filledSeats[3] &&
@@ -630,7 +621,7 @@ function Scoreboard({
   );
 }
 
-function Seat({ direction, player, isYou, isTurn, teamLabel, isPartner }) {
+function Seat({ direction, player, isYou, isTurn, teamLabel, isPartner, isDealer }) {
   const name = getPlayerName(player) || "Open Seat";
   const initials = player ? getInitials(name) : "?";
   const hasPlayer = !!player;
@@ -654,9 +645,46 @@ function Seat({ direction, player, isYou, isTurn, teamLabel, isPartner }) {
           {isYou && <span className="badge-chip badge-you">YOU</span>}
           {isTurn && <span className="badge-chip badge-turn">TURN</span>}
           {isPartner && <span className="badge-chip badge-partner">PARTNER</span>}
+          {isDealer && <span className="badge-chip">DEALER</span>}
           {!hasPlayer && <span className="badge-chip">Open Seat</span>}
         </div>
       </div>
+    </div>
+  );
+}
+
+function DeckStack() {
+  return (
+    <div className="deck-stack">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <div key={i} className="deck-card" style={{ transform: `translateY(-${i * 2}px)` }} />
+      ))}
+    </div>
+  );
+}
+
+function DealAnimation() {
+  const seats = [
+    { dir: "north", className: "deal--north" },
+    { dir: "east", className: "deal--east" },
+    { dir: "south", className: "deal--south" },
+    { dir: "west", className: "deal--west" },
+  ];
+
+  return (
+    <div className="deal-layer">
+      {seats.map((seat, seatIdx) =>
+        Array.from({ length: 4 }).map((_, cardIdx) => {
+          const delay = (seatIdx * 4 + cardIdx) * 0.12;
+          return (
+            <div
+              key={`${seat.dir}-${cardIdx}`}
+              className={`deal-card ${seat.className}`}
+              style={{ animationDelay: `${delay}s` }}
+            />
+          );
+        })
+      )}
     </div>
   );
 }
