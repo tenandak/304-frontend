@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import "./GameTable.css";
 import PixelButton from "./ui/PixelButton";
 import { getInitials, getPlayerName, getSeatIndex } from "../utils/player";
@@ -144,6 +144,10 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
     const player = players.find((p) => (p?.id || p?.playerId) === pid);
     return seatLabelFromSeatIndex(player?.seatIndex);
   };
+  const [dealFinished, setDealFinished] = useState(false);
+  const handleDealComplete = useCallback(() => {
+    setDealFinished(true);
+  }, []);
   const seatIndexByPlayerId = new Map();
   players.forEach((p) => {
     const pid = p?.id || p?.playerId;
@@ -172,6 +176,14 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
       : [];
   const dealKeyRef = useRef(null);
   const [dealSequence, setDealSequence] = useState([]);
+  const showDealing = phase === "first-pass-bidding" && dealSequence.length > 0;
+  useEffect(() => {
+    if (phase === "first-pass-bidding" && showDealing) {
+      setDealFinished(false);
+    } else if (phase !== "first-pass-bidding") {
+      setDealFinished(false);
+    }
+  }, [phase, showDealing]);
 
   const northSouth = [filledSeats[0], filledSeats[2]].filter(Boolean);
   const eastWest = [filledSeats[1], filledSeats[3]].filter(Boolean);
@@ -283,7 +295,6 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
     currentTurnPlayerId ||
     "Unknown";
   const teamLabelForPlayer = (player) => seatLabelFromSeatIndex(player?.seatIndex);
-  const showDealing = phase === "first-pass-bidding" && dealSequence.length > 0;
   const partnerPlayerId = uiSeats[0]?.id || uiSeats[0]?.playerId || null;
 
   return (
@@ -360,10 +371,11 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
             uiSeats={uiSeats}
             playerId={playerId}
             myDealCards={myDealCards}
+            onDealComplete={handleDealComplete}
           />
         </div>
       </div>
-      <div className="action-tray">
+      <div className="action-tray" style={{ display: dealFinished ? "block" : "none" }}>
         <div className="tray-header">
           <div className="phase-label">{currentPhaseLabel}</div>
           <div className="phase-info">
@@ -524,10 +536,17 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
 
 export default GameTable;
 
-function DealingLayer({ show, sequence, suitSymbol, uiSeats, playerId }) {
+function DealingLayer({ show, sequence, suitSymbol, uiSeats, playerId, onDealComplete }) {
   const [flyingCards, setFlyingCards] = useState([]);
   const [dealtCards, setDealtCards] = useState({ N: [], E: [], S: [], W: [] });
   const timersRef = useRef([]);
+  const runIdRef = useRef(0);
+  const remainingRef = useRef(0);
+  const completedRunRef = useRef(null);
+  const onDealCompleteRef = useRef(onDealComplete);
+  useEffect(() => {
+    onDealCompleteRef.current = onDealComplete;
+  }, [onDealComplete]);
   const hasSequence = Array.isArray(sequence) && sequence.length > 0;
   const shouldRender =
     show || flyingCards.length > 0 || Object.values(dealtCards).some((arr) => arr.length > 0);
@@ -535,6 +554,10 @@ function DealingLayer({ show, sequence, suitSymbol, uiSeats, playerId }) {
   useEffect(() => {
     timersRef.current.forEach(clearTimeout);
     timersRef.current = [];
+    runIdRef.current += 1;
+    const runId = runIdRef.current;
+    remainingRef.current = hasSequence ? sequence.length : 0;
+    completedRunRef.current = null;
     if (!show || !hasSequence) {
       setFlyingCards([]);
       setDealtCards({ N: [], E: [], S: [], W: [] });
@@ -545,8 +568,10 @@ function DealingLayer({ show, sequence, suitSymbol, uiSeats, playerId }) {
     const flightMs = DEAL_CARD_DURATION;
     sequence.forEach((item) => {
       const startTimer = setTimeout(() => {
+        if (runIdRef.current !== runId) return;
         setFlyingCards((prev) => [...prev, item]);
         const landTimer = setTimeout(() => {
+          if (runIdRef.current !== runId) return;
           setFlyingCards((prev) => prev.filter((card) => card.id !== item.id));
           setDealtCards((prev) => {
             const updated = { ...prev };
@@ -555,6 +580,11 @@ function DealingLayer({ show, sequence, suitSymbol, uiSeats, playerId }) {
             updated[item.dir] = dirCards.slice(0, 4);
             return updated;
           });
+          remainingRef.current -= 1;
+          if (remainingRef.current === 0 && completedRunRef.current !== runId) {
+            completedRunRef.current = runId;
+            onDealCompleteRef.current?.();
+          }
         }, flightMs);
         timersRef.current.push(landTimer);
       }, item.delay);
@@ -563,6 +593,7 @@ function DealingLayer({ show, sequence, suitSymbol, uiSeats, playerId }) {
     return () => {
       timersRef.current.forEach(clearTimeout);
       timersRef.current = [];
+      runIdRef.current += 1;
     };
   }, [show, hasSequence, sequence]);
 
