@@ -1,7 +1,18 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import "./GameTable.css";
 import PixelButton from "./ui/PixelButton";
 import { getInitials, getPlayerName, getSeatIndex } from "../utils/player";
+
+const DECK_ORIGIN = { left: "50%", top: "50%" };
+
+const DEAL_ZONE_POSITIONS = {
+  N: { left: "50%", top: "18%" },
+  E: { left: "86%", top: "50%" },
+  S: { left: "50%", top: "82%" },
+  W: { left: "14%", top: "50%" },
+};
+
+const DEAL_CARD_DURATION = 620;
 
 function GameTable({ roomId, playerId, gameState, onSendAction }) {
   const players = gameState?.players || [];
@@ -121,6 +132,11 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
       return [pid, dir];
     })
   );
+  const directionFromSeatIndex = (seatIdx) => {
+    if (!Number.isInteger(seatIdx)) return null;
+    const dirIdx = (seatIdx + offset + 4) % 4;
+    return ["N", "E", "S", "W"][dirIdx];
+  };
   const seatLabelFromSeatIndex = (seat) =>
     seat === 0 || seat === 2 ? "NS" : seat === 1 || seat === 3 ? "EW" : null;
   const seatLabelFromPlayerId = (pid) => {
@@ -128,7 +144,13 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
     const player = players.find((p) => (p?.id || p?.playerId) === pid);
     return seatLabelFromSeatIndex(player?.seatIndex);
   };
-  const myTeamLabel = seatLabelFromSeatIndex(mySeatIndex);
+  const seatIndexByPlayerId = new Map();
+  players.forEach((p) => {
+    const pid = p?.id || p?.playerId;
+    if (pid !== undefined && pid !== null) {
+      seatIndexByPlayerId.set(pid, getSeatIndex(p, null));
+    }
+  });
 
   const suitSymbol = (suit) => {
     switch (suit) {
@@ -144,6 +166,12 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
         return suit;
     }
   };
+  const myDealCards =
+    phase === "first-pass-bidding" && Array.isArray(me?.hand)
+      ? me.hand.slice(0, 4)
+      : [];
+  const dealKeyRef = useRef(null);
+  const [dealSequence, setDealSequence] = useState([]);
 
   const northSouth = [filledSeats[0], filledSeats[2]].filter(Boolean);
   const eastWest = [filledSeats[1], filledSeats[3]].filter(Boolean);
@@ -178,6 +206,61 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
     teams.find((t) => teamLabelByTeamId.get(t.id) === "EW") ||
     teams[1] ||
     null; // TODO: fall back to second team if mapping is unclear
+  const startSeatIndex = (() => {
+    const turnSeat = seatIndexByPlayerId.get(currentTurnPlayerId);
+    if (Number.isInteger(turnSeat)) return turnSeat;
+    if (Number.isInteger(round?.startingPlayerIndex)) return round.startingPlayerIndex;
+    if (Number.isInteger(round?.dealerIndex)) return round.dealerIndex;
+    return 0;
+  })();
+  const buildDealSequence = () => {
+    const cardDelay = 120;
+    const seatGap = 200;
+    const roundId = round?.id || "round";
+    const seatOrder = Array.from({ length: 4 }, (_, i) => (startSeatIndex + i) % 4);
+    const seq = [];
+    seatOrder.forEach((seatIdx, seatPos) => {
+      const seatDelay = seatPos * (4 * cardDelay + seatGap);
+      const player = filledSeats[seatIdx];
+      const pid = player?.id || player?.playerId || `seat-${seatIdx}`;
+      const dir = directionFromSeatIndex(seatIdx) || "S";
+      for (let cardIdx = 0; cardIdx < 4; cardIdx++) {
+        const delay = seatDelay + cardIdx * cardDelay;
+        const card = pid === playerId ? myDealCards[cardIdx] || null : null;
+        seq.push({
+          id: `${roundId}-deal-${seatIdx}-${cardIdx}`,
+          playerId: pid,
+          dir,
+          seatIndex: seatIdx,
+          card,
+          delay,
+          roundId,
+        });
+      }
+    });
+    return seq;
+  };
+  useEffect(() => {
+    const key = round?.id ? `${round.id}-first-pass-bidding` : null;
+    if (phase === "first-pass-bidding" && key) {
+      if (dealKeyRef.current !== key) {
+        dealKeyRef.current = key;
+        setDealSequence(buildDealSequence());
+      }
+    } else {
+      setDealSequence([]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    phase,
+    round?.id,
+    currentTurnPlayerId,
+    round?.startingPlayerIndex,
+    round?.dealerIndex,
+    offset,
+    players.length,
+    myDealCards,
+  ]);
 
   const humanizePhase = (value) => {
     switch (value) {
@@ -200,38 +283,14 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
     currentTurnPlayerId ||
     "Unknown";
   const teamLabelForPlayer = (player) => seatLabelFromSeatIndex(player?.seatIndex);
+  const showDealing = phase === "first-pass-bidding" && dealSequence.length > 0;
+  const partnerPlayerId = uiSeats[0]?.id || uiSeats[0]?.playerId || null;
 
   return (
     <div className="game-root">
       <div className="play-area room-shell">
         <div className="table-grid">
           <div aria-hidden="true" />
-          <div className="table-center-cell">
-              <DeckStack />
-              {round?.phase === "first-pass-bidding" && <DealAnimation key={round?.id || "deal"} />}
-              <div className="table-center">
-                {round?.phase?.startsWith("tricks") ? (
-                  currentTrick ? (
-                    <CenterPlayArea
-                      currentTrick={currentTrick}
-                      players={players}
-                      playerId={playerId}
-                      bidding={bidding}
-                      suitSymbol={suitSymbol}
-                      directionFromPlayerId={(pid) => {
-                        const dir = uiDirectionByPlayerId.get(pid);
-                        return dir || null;
-                      }}
-                    />
-                  ) : (
-                    <div className="meta">Waiting for play…</div>
-                  )
-                ) : (
-                  <div className="meta">Table is ready.</div>
-                )}
-              </div>
-          </div>
-
           <div className="seat seat-north">
             <Seat
               direction="north"
@@ -245,8 +304,9 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
               }
               isPartner={
                 !!uiSeats[0] &&
-                myTeamLabel === "NS" &&
-                (uiSeats[0]?.id || uiSeats[0]?.playerId) !== playerId
+                partnerPlayerId &&
+                (uiSeats[0]?.id || uiSeats[0]?.playerId) === partnerPlayerId &&
+                partnerPlayerId !== playerId
               }
             />
           </div>
@@ -261,11 +321,7 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
                 !!uiSeats[1] &&
                 currentTurnPlayerId === (uiSeats[1]?.id || uiSeats[1]?.playerId)
               }
-              isPartner={
-                !!uiSeats[1] &&
-                myTeamLabel === "EW" &&
-                (uiSeats[1]?.id || uiSeats[1]?.playerId) !== playerId
-              }
+              isPartner={false}
             />
           </div>
           <div className="seat seat-south">
@@ -279,11 +335,7 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
                 !!uiSeats[2] &&
                 currentTurnPlayerId === (uiSeats[2]?.id || uiSeats[2]?.playerId)
               }
-              isPartner={
-                !!uiSeats[2] &&
-                myTeamLabel === "NS" &&
-                (uiSeats[2]?.id || uiSeats[2]?.playerId) !== playerId
-              }
+              isPartner={false}
             />
           </div>
           <div className="seat seat-west">
@@ -297,27 +349,20 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
                 !!uiSeats[3] &&
                 currentTurnPlayerId === (uiSeats[3]?.id || uiSeats[3]?.playerId)
               }
-              isPartner={
-                !!uiSeats[3] &&
-                myTeamLabel === "EW" &&
-                (uiSeats[3]?.id || uiSeats[3]?.playerId) !== playerId
-              }
+              isPartner={false}
             />
           </div>
+
+          <DealingLayer
+            show={showDealing}
+            sequence={dealSequence}
+            suitSymbol={suitSymbol}
+            uiSeats={uiSeats}
+            playerId={playerId}
+            myDealCards={myDealCards}
+          />
         </div>
       </div>
-
-      <Scoreboard
-        north={uiSeats[0]}
-        south={uiSeats[2]}
-        east={uiSeats[1]}
-        west={uiSeats[3]}
-        nsTeam={nsTeam}
-        ewTeam={ewTeam}
-        highestBidderTeamLabel={highestBidderTeamLabel}
-        currentTrickWinnerTeamLabel={currentTrickWinnerTeamLabel}
-      />
-
       <div className="action-tray">
         <div className="tray-header">
           <div className="phase-label">{currentPhaseLabel}</div>
@@ -455,56 +500,16 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
           </div>
         )}
       </div>
-
-      <div className="hand-dock">
-        <div className="hand-label">Your Hand</div>
-        <div className="hand-scroll">
-          <div className="hand-row">
-            {(me?.hand || []).map((card, idx) => {
-              const isPlayable =
-                isMyTrickTurn &&
-                modePlayableIds.length > 0 &&
-                modePlayableIds.includes(card.id);
-              const blockedByRules =
-                modePlayableIds.length === 0 &&
-                (playableCardIds.length > 0 || faceDownPlayableCardIds.length > 0);
-              const disabled = !isPlayable || blockedByRules;
-              return (
-                <button
-                  key={idx}
-                  type="button"
-                  className={`hand-card ${isPlayable ? "playable" : ""} ${
-                    disabled ? "disabled" : ""
-                  }`}
-                  onClick={() => {
-                    if (!isPlayable) return;
-                    onSendAction({
-                      type: playFaceDown ? "PLAY_GUESS_FACE_DOWN" : "PLAY_CARD",
-                      payload: { cardId: card.id },
-                    });
-                  }}
-                >
-                  <span className="hand-rank">{card.rank}</span>
-                  <span className="hand-suit">{suitSymbol(card.suit)}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-        {canPlayFaceDown && (
-          <div className="face-row">
-            <PixelButton
-              variant="secondary"
-              onClick={() => setPlayFaceDown((prev) => !prev)}
-              disabled={!isMyTrickTurn || faceDownPlayableCardIds.length === 0}
-            >
-              {playFaceDown ? "Playing Face Down" : "Play Face Down"}
-            </PixelButton>
-            <div className="meta warning">Face-down play hides your card; backend enforces risk.</div>
-          </div>
-        )}
-      </div>
-
+      <Scoreboard
+        north={uiSeats[0]}
+        south={uiSeats[2]}
+        east={uiSeats[1]}
+        west={uiSeats[3]}
+        nsTeam={nsTeam}
+        ewTeam={ewTeam}
+        highestBidderTeamLabel={highestBidderTeamLabel}
+        currentTrickWinnerTeamLabel={currentTrickWinnerTeamLabel}
+      />
       <details className="debugDock">
         <summary>Debug</summary>
         <p className="meta">Phase: {phase}</p>
@@ -518,6 +523,100 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
 }
 
 export default GameTable;
+
+function DealingLayer({ show, sequence, suitSymbol, uiSeats, playerId }) {
+  const [flyingCards, setFlyingCards] = useState([]);
+  const [dealtCards, setDealtCards] = useState({ N: [], E: [], S: [], W: [] });
+  const timersRef = useRef([]);
+  const hasSequence = Array.isArray(sequence) && sequence.length > 0;
+  const shouldRender =
+    show || flyingCards.length > 0 || Object.values(dealtCards).some((arr) => arr.length > 0);
+
+  useEffect(() => {
+    timersRef.current.forEach(clearTimeout);
+    timersRef.current = [];
+    if (!show || !hasSequence) {
+      setFlyingCards([]);
+      setDealtCards({ N: [], E: [], S: [], W: [] });
+      return undefined;
+    }
+    setFlyingCards([]);
+    setDealtCards({ N: [], E: [], S: [], W: [] });
+    const flightMs = DEAL_CARD_DURATION;
+    sequence.forEach((item) => {
+      const startTimer = setTimeout(() => {
+        setFlyingCards((prev) => [...prev, item]);
+        const landTimer = setTimeout(() => {
+          setFlyingCards((prev) => prev.filter((card) => card.id !== item.id));
+          setDealtCards((prev) => {
+            const updated = { ...prev };
+            const dirCards = [...(updated[item.dir] || [])];
+            if (dirCards.length < 4) dirCards.push(item.card || null);
+            updated[item.dir] = dirCards.slice(0, 4);
+            return updated;
+          });
+        }, flightMs);
+        timersRef.current.push(landTimer);
+      }, item.delay);
+      timersRef.current.push(startTimer);
+    });
+    return () => {
+      timersRef.current.forEach(clearTimeout);
+      timersRef.current = [];
+    };
+  }, [show, hasSequence, sequence]);
+
+  if (!shouldRender || !hasSequence) return null;
+
+  const seatByDir = {
+    N: uiSeats[0],
+    E: uiSeats[1],
+    S: uiSeats[2],
+    W: uiSeats[3],
+  };
+  const deckOrigin = DECK_ORIGIN;
+
+  return (
+    <div className="table-overlay" aria-hidden="true">
+      <DeckStack />
+      {["N", "E", "S", "W"].map((dir) => {
+        const cards = dealtCards[dir] || [];
+        const isYouDir = (seatByDir[dir]?.id || seatByDir[dir]?.playerId) === playerId;
+        return (
+          <div key={dir} className={`deal-zone deal-zone--${dir.toLowerCase()}`}>
+            {cards.map((card, idx) => {
+              const showFace = isYouDir && !!card;
+              const label = showFace ? `${card.rank ?? "?"} ${card.suit ? suitSymbol(card.suit) : ""}`.trim() : "";
+              return (
+                <div
+                  key={`${dir}-${idx}`}
+                  className={`deal-card-static ${showFace ? "deal-card-face" : "deal-card-back"}`}
+                >
+                  {showFace && <span className="deal-card-label">{label}</span>}
+                </div>
+              );
+            })}
+          </div>
+        );
+      })}
+      {flyingCards.map((card) => {
+        const to = DEAL_ZONE_POSITIONS[card.dir] || DEAL_ZONE_POSITIONS.S;
+        return (
+          <div
+            key={card.id}
+            className="deal-card-fly"
+            style={{
+              "--from-left": deckOrigin.left,
+              "--from-top": deckOrigin.top,
+              "--to-left": to.left,
+              "--to-top": to.top,
+            }}
+          />
+        );
+      })}
+    </div>
+  );
+}
 
 function CenterPlayArea({
   currentTrick,
@@ -641,12 +740,10 @@ function Seat({ direction, player, isYou, isTurn, teamLabel, isPartner, isDealer
     <div className={`seat-block seat-${direction}`}>
       <div className={plaqueClasses.join(" ")}>
         <div className="seat-top">
-          <div className="seat-avatar">{initials}</div>
           <div className="seat-text">
             <div className="seat-name" title={name}>
               {name}
             </div>
-            <div className="seat-team">Team {teamLabel || "?"}</div>
           </div>
         </div>
         <div className="seat-badges">
@@ -667,32 +764,6 @@ function DeckStack() {
       {Array.from({ length: 5 }).map((_, i) => (
         <div key={i} className="deck-card" style={{ transform: `translateY(-${i * 2}px)` }} />
       ))}
-    </div>
-  );
-}
-
-function DealAnimation() {
-  const seats = [
-    { dir: "north", className: "deal--north" },
-    { dir: "east", className: "deal--east" },
-    { dir: "south", className: "deal--south" },
-    { dir: "west", className: "deal--west" },
-  ];
-
-  return (
-    <div className="deal-layer">
-      {seats.map((seat, seatIdx) =>
-        Array.from({ length: 4 }).map((_, cardIdx) => {
-          const delay = (seatIdx * 4 + cardIdx) * 0.12;
-          return (
-            <div
-              key={`${seat.dir}-${cardIdx}`}
-              className={`deal-card ${seat.className}`}
-              style={{ animationDelay: `${delay}s` }}
-            />
-          );
-        })
-      )}
     </div>
   );
 }

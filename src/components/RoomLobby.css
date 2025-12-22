@@ -39,7 +39,7 @@
     ". north ."
     "west center east"
     ". south .";
-  gap: 1rem;
+  gap: 8rem;
   align-items: center;
   justify-items: center;
 }
