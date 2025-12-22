@@ -112,6 +112,15 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
   });
   const filledSeats = [0, 1, 2, 3].map((i) => seatMap.get(i));
   const mySeatIndex = players.find((p) => (p?.id || p?.playerId) === playerId)?.seatIndex;
+  const offset = Number.isInteger(mySeatIndex) ? ((2 - mySeatIndex + 4) % 4) : 0;
+  const uiSeats = [0, 1, 2, 3].map((i) => filledSeats[(i - offset + 4) % 4]);
+  const uiDirectionByPlayerId = new Map(
+    uiSeats.map((player, idx) => {
+      const pid = player?.id || player?.playerId;
+      const dir = ["N", "E", "S", "W"][idx];
+      return [pid, dir];
+    })
+  );
   const seatLabelFromSeatIndex = (seat) =>
     seat === 0 || seat === 2 ? "NS" : seat === 1 || seat === 3 ? "EW" : null;
   const seatLabelFromPlayerId = (pid) => {
@@ -190,6 +199,7 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
     players.find((p) => (p.id || p.playerId) === currentTurnPlayerId)?.name ||
     currentTurnPlayerId ||
     "Unknown";
+  const teamLabelForPlayer = (player) => seatLabelFromSeatIndex(player?.seatIndex);
 
   return (
     <div className="game-root">
@@ -209,13 +219,8 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
                       bidding={bidding}
                       suitSymbol={suitSymbol}
                       directionFromPlayerId={(pid) => {
-                        const player = players.find((p) => (p?.id || p?.playerId) === pid);
-                        const seat = player?.seatIndex;
-                        if (seat === 0) return "N";
-                        if (seat === 1) return "E";
-                        if (seat === 2) return "S";
-                        if (seat === 3) return "W";
-                        return null;
+                        const dir = uiDirectionByPlayerId.get(pid);
+                        return dir || null;
                       }}
                     />
                   ) : (
@@ -230,72 +235,72 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
           <div className="seat seat-north">
             <Seat
               direction="north"
-              teamLabel="NS"
-              player={filledSeats[0]}
-              isDealer={filledSeats[0]?.seatIndex === round?.dealerIndex}
-              isYou={(filledSeats[0]?.id || filledSeats[0]?.playerId) === playerId}
+              teamLabel={teamLabelForPlayer(uiSeats[0]) || "NS"}
+              player={uiSeats[0]}
+              isDealer={uiSeats[0]?.seatIndex === round?.dealerIndex}
+              isYou={(uiSeats[0]?.id || uiSeats[0]?.playerId) === playerId}
               isTurn={
-                !!filledSeats[0] &&
-                currentTurnPlayerId === (filledSeats[0]?.id || filledSeats[0]?.playerId)
+                !!uiSeats[0] &&
+                currentTurnPlayerId === (uiSeats[0]?.id || uiSeats[0]?.playerId)
               }
               isPartner={
-                !!filledSeats[0] &&
+                !!uiSeats[0] &&
                 myTeamLabel === "NS" &&
-                (filledSeats[0]?.id || filledSeats[0]?.playerId) !== playerId
+                (uiSeats[0]?.id || uiSeats[0]?.playerId) !== playerId
               }
             />
           </div>
           <div className="seat seat-east">
             <Seat
               direction="east"
-              teamLabel="EW"
-              player={filledSeats[1]}
-              isDealer={filledSeats[1]?.seatIndex === round?.dealerIndex}
-              isYou={(filledSeats[1]?.id || filledSeats[1]?.playerId) === playerId}
+              teamLabel={teamLabelForPlayer(uiSeats[1]) || "EW"}
+              player={uiSeats[1]}
+              isDealer={uiSeats[1]?.seatIndex === round?.dealerIndex}
+              isYou={(uiSeats[1]?.id || uiSeats[1]?.playerId) === playerId}
               isTurn={
-                !!filledSeats[1] &&
-                currentTurnPlayerId === (filledSeats[1]?.id || filledSeats[1]?.playerId)
+                !!uiSeats[1] &&
+                currentTurnPlayerId === (uiSeats[1]?.id || uiSeats[1]?.playerId)
               }
               isPartner={
-                !!filledSeats[1] &&
+                !!uiSeats[1] &&
                 myTeamLabel === "EW" &&
-                (filledSeats[1]?.id || filledSeats[1]?.playerId) !== playerId
+                (uiSeats[1]?.id || uiSeats[1]?.playerId) !== playerId
               }
             />
           </div>
           <div className="seat seat-south">
             <Seat
               direction="south"
-              teamLabel="NS"
-              player={filledSeats[2]}
-              isDealer={filledSeats[2]?.seatIndex === round?.dealerIndex}
-              isYou={(filledSeats[2]?.id || filledSeats[2]?.playerId) === playerId}
+              teamLabel={teamLabelForPlayer(uiSeats[2]) || "NS"}
+              player={uiSeats[2]}
+              isDealer={uiSeats[2]?.seatIndex === round?.dealerIndex}
+              isYou={(uiSeats[2]?.id || uiSeats[2]?.playerId) === playerId}
               isTurn={
-                !!filledSeats[2] &&
-                currentTurnPlayerId === (filledSeats[2]?.id || filledSeats[2]?.playerId)
+                !!uiSeats[2] &&
+                currentTurnPlayerId === (uiSeats[2]?.id || uiSeats[2]?.playerId)
               }
               isPartner={
-                !!filledSeats[2] &&
+                !!uiSeats[2] &&
                 myTeamLabel === "NS" &&
-                (filledSeats[2]?.id || filledSeats[2]?.playerId) !== playerId
+                (uiSeats[2]?.id || uiSeats[2]?.playerId) !== playerId
               }
             />
           </div>
           <div className="seat seat-west">
             <Seat
               direction="west"
-              teamLabel="EW"
-              player={filledSeats[3]}
-              isDealer={filledSeats[3]?.seatIndex === round?.dealerIndex}
-              isYou={(filledSeats[3]?.id || filledSeats[3]?.playerId) === playerId}
+              teamLabel={teamLabelForPlayer(uiSeats[3]) || "EW"}
+              player={uiSeats[3]}
+              isDealer={uiSeats[3]?.seatIndex === round?.dealerIndex}
+              isYou={(uiSeats[3]?.id || uiSeats[3]?.playerId) === playerId}
               isTurn={
-                !!filledSeats[3] &&
-                currentTurnPlayerId === (filledSeats[3]?.id || filledSeats[3]?.playerId)
+                !!uiSeats[3] &&
+                currentTurnPlayerId === (uiSeats[3]?.id || uiSeats[3]?.playerId)
               }
               isPartner={
-                !!filledSeats[3] &&
+                !!uiSeats[3] &&
                 myTeamLabel === "EW" &&
-                (filledSeats[3]?.id || filledSeats[3]?.playerId) !== playerId
+                (uiSeats[3]?.id || uiSeats[3]?.playerId) !== playerId
               }
             />
           </div>
@@ -303,10 +308,10 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
       </div>
 
       <Scoreboard
-        north={filledSeats[0]}
-        south={filledSeats[2]}
-        east={filledSeats[1]}
-        west={filledSeats[3]}
+        north={uiSeats[0]}
+        south={uiSeats[2]}
+        east={uiSeats[1]}
+        west={uiSeats[3]}
         nsTeam={nsTeam}
         ewTeam={ewTeam}
         highestBidderTeamLabel={highestBidderTeamLabel}
@@ -503,6 +508,9 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
       <details className="debugDock">
         <summary>Debug</summary>
         <p className="meta">Phase: {phase}</p>
+        <p className="meta">
+          UI rotation: mySeatIndex={mySeatIndex ?? "?"} offset={offset} | North={getPlayerName(uiSeats[0])} East={getPlayerName(uiSeats[1])} South={getPlayerName(uiSeats[2])} West={getPlayerName(uiSeats[3])}
+        </p>
         <pre className="state-pre">{JSON.stringify(gameState, null, 2)}</pre>
       </details>
     </div>
