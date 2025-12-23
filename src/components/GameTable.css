@@ -144,9 +144,16 @@
 .deal-zone {
   position: absolute;
   display: flex;
+  flex-direction: column;
+  align-items: center;
   gap: 0.3rem;
   pointer-events: none;
   z-index: 4;
+}
+
+.deal-cards {
+  display: flex;
+  gap: 0.3rem;
 }
 
 .deal-zone--north,
@@ -209,6 +216,16 @@
 
 .deal-card-label {
   font-weight: bold;
+}
+
+.deal-caption {
+  font-size: 0.7rem;
+  color: rgba(255, 214, 102, 0.9);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  pointer-events: none;
+  margin-top:-75px;
 }
 
 .deal-card-fly {

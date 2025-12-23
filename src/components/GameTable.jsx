@@ -369,15 +369,23 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
             suitSymbol={suitSymbol}
             uiSeats={uiSeats}
             playerId={playerId}
+            bidderId={bidding?.bidderId}
+            phase={phase}
             myDealCards={myDealCards}
             onDealComplete={handleDealComplete}
           />
         </div>
       </div>
-      <div className="action-tray" style={{ display: dealFinished ? "block" : "none" }}>
+      <div className="action-tray">
         <div className="tray-header">
           <div className="phase-label">{currentPhaseLabel}</div>
           <div className="phase-info">
+            {phase === "trump-selection" &&
+              (playerId === bidding?.bidderId
+                ? "Select a suit and a card to reveal trump."
+                : "Waiting for trump to be selected."
+              )
+            }
             {isBidding
               ? round?.phase === "second-pass-bidding"
                 ? "Second-pass: 250 or pass if allowed."
@@ -386,11 +394,9 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
               ? isMyTrickTurn
                 ? "Your turn to play."
                 : "Waiting for other players."
-              : phase === "trump-selection"
-              ? "Select a suit and a card to reveal trump."
               : isOptional
               ? "Optional 250: bid or pass."
-              : "Follow the round instructions."}
+              : " Follow the round instructions."}
           </div>
           {isBidding && <div className="phase-sub">Current turn: {currentTurnName}</div>}
           {phase?.startsWith("tricks") && (
@@ -476,7 +482,7 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
           </div>
         )}
 
-        {phase === "trump-selection" && playerId === bidding?.bidderId && (
+        {/* {phase === "trump-selection" && playerId === bidding?.bidderId && (
           <div className="tray-actions">
             {["hearts", "spades", "diamonds", "clubs"].map((suit) => (
               <PixelButton
@@ -509,7 +515,7 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
               </div>
             )}
           </div>
-        )}
+        )} */}
       </div>
       <Scoreboard
         north={uiSeats[0]}
@@ -535,7 +541,16 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
 
 export default GameTable;
 
-function DealingLayer({ show, sequence, suitSymbol, uiSeats, playerId, onDealComplete }) {
+function DealingLayer({
+  show,
+  sequence,
+  suitSymbol,
+  uiSeats,
+  playerId,
+  bidderId,
+  phase,
+  onDealComplete,
+}) {
   const [flyingCards, setFlyingCards] = useState([]);
   const [dealtCards, setDealtCards] = useState({ N: [], E: [], S: [], W: [] });
   const timersRef = useRef([]);
@@ -612,20 +627,29 @@ function DealingLayer({ show, sequence, suitSymbol, uiSeats, playerId, onDealCom
       {["N", "E", "S", "W"].map((dir) => {
         const cards = dealtCards[dir] || [];
         const isYouDir = (seatByDir[dir]?.id || seatByDir[dir]?.playerId) === playerId;
+        const isBidderDir =
+          bidderId && (seatByDir[dir]?.id || seatByDir[dir]?.playerId) === bidderId;
+        const showTrumpCaption =
+          phase === "trump-selection" && isBidderDir && playerId === bidderId;
         return (
           <div key={dir} className={`deal-zone deal-zone--${dir.toLowerCase()}`}>
-            {cards.map((card, idx) => {
-              const showFace = isYouDir && !!card;
-              const label = showFace ? `${card.rank ?? "?"} ${card.suit ? suitSymbol(card.suit) : ""}`.trim() : "";
-              return (
-                <div
-                  key={`${dir}-${idx}`}
-                  className={`deal-card-static ${showFace ? "deal-card-face" : "deal-card-back"}`}
-                >
-                  {showFace && <span className="deal-card-label">{label}</span>}
-                </div>
-              );
-            })}
+            {showTrumpCaption && <div className="deal-caption">Select Trump</div>}
+            <div className="deal-cards">
+              {cards.map((card, idx) => {
+                const showFace = isYouDir && !!card;
+                const label = showFace
+                  ? `${card.rank ?? "?"} ${card.suit ? suitSymbol(card.suit) : ""}`.trim()
+                  : "";
+                return (
+                  <div
+                    key={`${dir}-${idx}`}
+                    className={`deal-card-static ${showFace ? "deal-card-face" : "deal-card-back"}`}
+                  >
+                    {showFace && <span className="deal-card-label">{label}</span>}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         );
       })}
