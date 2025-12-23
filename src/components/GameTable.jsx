@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./GameTable.css";
 import PixelButton from "./ui/PixelButton";
 import { getInitials, getPlayerName, getSeatIndex } from "../utils/player";
@@ -170,13 +170,15 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
         return suit;
     }
   };
-  const myDealCards =
-    phase === "first-pass-bidding" && Array.isArray(me?.hand)
-      ? me.hand.slice(0, 4)
-      : [];
+  const myDealCards = useMemo(() => {
+    if (phase === "first-pass-bidding" && Array.isArray(me?.hand)) {
+      return me.hand.slice(0, 4);
+    }
+    return [];
+  }, [phase, me?.hand]);
   const dealKeyRef = useRef(null);
   const [dealSequence, setDealSequence] = useState([]);
-  const showDealing = phase === "first-pass-bidding" && dealSequence.length > 0;
+  const showDealing = dealSequence.length > 0;
   useEffect(() => {
     if (phase === "first-pass-bidding" && showDealing) {
       setDealFinished(false);
@@ -259,10 +261,7 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
         dealKeyRef.current = key;
         setDealSequence(buildDealSequence());
       }
-    } else {
-      setDealSequence([]);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     phase,
     round?.id,
