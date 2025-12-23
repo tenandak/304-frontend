@@ -12,6 +12,13 @@ const DEAL_ZONE_POSITIONS = {
   W: { left: "14%", top: "50%" },
 };
 
+const TRUMP_TARGET_POSITIONS = {
+  N: { left: "50%", top: "18%", transform: "translate(80px, 20%)" },
+  S: { left: "60%", top: "90%", transform: "translate(80px, -120%)" },
+  E: { left: "86%", top: "50%", transform: "translate(32px, -50%)" },
+  W: { left: "14%", top: "50%", transform: "translate(120px, -50%)" },
+};
+
 const DEAL_CARD_DURATION = 620;
 
 function GameTable({ roomId, playerId, gameState, onSendAction }) {
@@ -125,6 +132,14 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
   const mySeatIndex = players.find((p) => (p?.id || p?.playerId) === playerId)?.seatIndex;
   const offset = Number.isInteger(mySeatIndex) ? ((2 - mySeatIndex + 4) % 4) : 0;
   const uiSeats = [0, 1, 2, 3].map((i) => filledSeats[(i - offset + 4) % 4]);
+  const seatTurnPlayerId =
+    currentTurnPlayerId ||
+    trickTurnPlayerId ||
+    (Number.isInteger(round?.startingPlayerIndex)
+      ? (filledSeats[round.startingPlayerIndex]?.id ||
+          filledSeats[round.startingPlayerIndex]?.playerId ||
+          null)
+      : null);
   const uiDirectionByPlayerId = new Map(
     uiSeats.map((player, idx) => {
       const pid = player?.id || player?.playerId;
@@ -179,6 +194,7 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
   const dealKeyRef = useRef(null);
   const [dealSequence, setDealSequence] = useState([]);
   const showDealing = dealSequence.length > 0;
+  const [placedTrump, setPlacedTrump] = useState(null);
   useEffect(() => {
     if (phase === "first-pass-bidding" && showDealing) {
       setDealFinished(false);
@@ -310,7 +326,7 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
               isYou={(uiSeats[0]?.id || uiSeats[0]?.playerId) === playerId}
               isTurn={
                 !!uiSeats[0] &&
-                currentTurnPlayerId === (uiSeats[0]?.id || uiSeats[0]?.playerId)
+                seatTurnPlayerId === (uiSeats[0]?.id || uiSeats[0]?.playerId)
               }
               isPartner={
                 !!uiSeats[0] &&
@@ -329,7 +345,7 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
               isYou={(uiSeats[1]?.id || uiSeats[1]?.playerId) === playerId}
               isTurn={
                 !!uiSeats[1] &&
-                currentTurnPlayerId === (uiSeats[1]?.id || uiSeats[1]?.playerId)
+                seatTurnPlayerId === (uiSeats[1]?.id || uiSeats[1]?.playerId)
               }
               isPartner={false}
             />
@@ -343,7 +359,7 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
               isYou={(uiSeats[2]?.id || uiSeats[2]?.playerId) === playerId}
               isTurn={
                 !!uiSeats[2] &&
-                currentTurnPlayerId === (uiSeats[2]?.id || uiSeats[2]?.playerId)
+                seatTurnPlayerId === (uiSeats[2]?.id || uiSeats[2]?.playerId)
               }
               isPartner={false}
             />
@@ -357,7 +373,7 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
               isYou={(uiSeats[3]?.id || uiSeats[3]?.playerId) === playerId}
               isTurn={
                 !!uiSeats[3] &&
-                currentTurnPlayerId === (uiSeats[3]?.id || uiSeats[3]?.playerId)
+                seatTurnPlayerId === (uiSeats[3]?.id || uiSeats[3]?.playerId)
               }
               isPartner={false}
             />
@@ -373,15 +389,14 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
             phase={phase}
             myDealCards={myDealCards}
             onDealComplete={handleDealComplete}
-            onSelectTrump={              
-              (card) => {
-                return onSendAction({
-                  type: "SELECT_TRUMP",
-                  payload: { suit: card.suit, cardId: card.id },
-                });
-              }
-              
-            }
+            placedTrump={placedTrump}
+            onPlaceTrump={(data) => setPlacedTrump(data)}
+            onSelectTrump={(card) => {
+              onSendAction({
+                type: "SELECT_TRUMP",
+                payload: { suit: card.suit, cardId: card.id },
+              });
+            }}
           />
         </div>
       </div>
@@ -560,6 +575,8 @@ function DealingLayer({
   phase,
   onDealComplete,
   onSelectTrump,
+  onPlaceTrump,
+  placedTrump,
 }) {
   const [flyingCards, setFlyingCards] = useState([]);
   const [dealtCards, setDealtCards] = useState({ N: [], E: [], S: [], W: [] });
@@ -573,7 +590,10 @@ function DealingLayer({
   }, [onDealComplete]);
   const hasSequence = Array.isArray(sequence) && sequence.length > 0;
   const shouldRender =
-    show || flyingCards.length > 0 || Object.values(dealtCards).some((arr) => arr.length > 0);
+    show ||
+    flyingCards.length > 0 ||
+    placedTrump ||
+    Object.values(dealtCards).some((arr) => arr.length > 0);
 
   useEffect(() => {
     timersRef.current.forEach(clearTimeout);
@@ -621,7 +641,22 @@ function DealingLayer({
     };
   }, [show, hasSequence, sequence]);
 
-  if (!shouldRender || !hasSequence) return null;
+  if (!shouldRender) return null;
+  const trumpAnim =
+    placedTrump && placedTrump.dir
+      ? {
+          from: DEAL_ZONE_POSITIONS[placedTrump.dir] || DEAL_ZONE_POSITIONS.S,
+          to: TRUMP_TARGET_POSITIONS[placedTrump.dir] || TRUMP_TARGET_POSITIONS.S,
+          faceUp: placedTrump.ownerId === playerId,
+          label: (() => {
+            if (placedTrump.ownerId !== playerId) return "";
+            const [suitFromId, rankFromId] = (placedTrump.card?.id || "").split("-");
+            const rank = placedTrump.card?.rank || rankFromId || "?";
+            const suit = placedTrump.card?.suit || suitFromId || placedTrump.card?.suit;
+            return `${rank} ${suit ? suitSymbol(suit) : ""}`.trim();
+          })(),
+        }
+      : null;
 
   const seatByDir = {
     N: uiSeats[0],
@@ -642,6 +677,8 @@ function DealingLayer({
         const showTrumpCaption =
           phase === "trump-selection" && isBidderDir && playerId === bidderId;
         const allowTrumpClick = phase === "trump-selection" && isBidderDir && playerId === bidderId;
+        const trumpPlacedHere =
+          placedTrump && placedTrump.dir === dir && placedTrump.ownerId === bidderId;
         return (
           <div
             key={dir}
@@ -651,9 +688,14 @@ function DealingLayer({
             {showTrumpCaption && <div className="deal-caption">Select Trump</div>}
             <div className="deal-cards">
               {cards.map((card, idx) => {
+                const isTrumpCard = trumpPlacedHere && card?.id === placedTrump?.card?.id;
+                if (isTrumpCard) return null;
                 const showFace = isYouDir && !!card;
+                const [suitFromId, rankFromId] = (card?.id || "").split("-");
+                const resolvedRank = card?.rank || rankFromId || "?";
+                const resolvedSuit = card?.suit || suitFromId || card?.suit;
                 const label = showFace
-                  ? `${card.rank ?? "?"} ${card.suit ? suitSymbol(card.suit) : ""}`.trim()
+                  ? `${resolvedRank} ${resolvedSuit ? suitSymbol(resolvedSuit) : ""}`.trim()
                   : "";
                 const clickable = allowTrumpClick && !!card;
                 const className = [
@@ -670,7 +712,10 @@ function DealingLayer({
                       key={`${dir}-${idx}`}
                       type="button"
                       className={className}
-                      onClick={() => onSelectTrump?.(card)}
+                      onClick={() => {
+                        onPlaceTrump?.({ card, dir, ownerId: bidderId });
+                        onSelectTrump?.(card);
+                      }}
                     >
                       {showFace && <span className="deal-card-label">{label}</span>}
                     </button>
@@ -687,6 +732,20 @@ function DealingLayer({
           </div>
         );
       })}
+      {trumpAnim && (
+        <div
+          className={`trump-fly ${trumpAnim.faceUp ? "deal-card-face" : "deal-card-back"}`}
+          style={{
+            "--from-left": trumpAnim.from.left,
+            "--from-top": trumpAnim.from.top,
+            "--to-left": trumpAnim.to.left,
+            "--to-top": trumpAnim.to.top,
+            transform: trumpAnim.to.transform,
+          }}
+        >
+          {trumpAnim.faceUp ? <span className="deal-card-label">{trumpAnim.label}</span> : null}
+        </div>
+      )}
       {flyingCards.map((card) => {
         const to = DEAL_ZONE_POSITIONS[card.dir] || DEAL_ZONE_POSITIONS.S;
         return (
