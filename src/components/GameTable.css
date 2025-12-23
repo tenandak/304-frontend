@@ -154,6 +154,7 @@
 .deal-cards {
   display: flex;
   gap: 0.3rem;
+  pointer-events: auto;
 }
 
 .deal-zone--north,
@@ -216,6 +217,29 @@
 
 .deal-card-label {
   font-weight: bold;
+}
+
+.deal-card-clickable {
+  cursor: pointer;
+  pointer-events: auto;
+  transition: transform 0.08s ease, outline-color 0.08s ease, box-shadow 0.08s ease;
+}
+
+.deal-card-clickable:hover,
+.deal-card-clickable:focus-visible {
+  outline: 2px solid rgba(255, 214, 102, 0.85);
+  box-shadow:
+    0 10px 22px rgba(0, 0, 0, 0.35),
+    0 0 0 3px rgba(255, 214, 102, 0.22);
+  transform: translateY(-2px);
+}
+
+.deal-card-clickable:focus-visible {
+  outline-offset: 2px;
+}
+
+.deal-card-clickable:active {
+  transform: translateY(0);
 }
 
 .deal-caption {

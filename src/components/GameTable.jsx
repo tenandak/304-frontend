@@ -373,6 +373,15 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
             phase={phase}
             myDealCards={myDealCards}
             onDealComplete={handleDealComplete}
+            onSelectTrump={              
+              (card) => {
+                return onSendAction({
+                  type: "SELECT_TRUMP",
+                  payload: { suit: card.suit, cardId: card.id },
+                });
+              }
+              
+            }
           />
         </div>
       </div>
@@ -550,6 +559,7 @@ function DealingLayer({
   bidderId,
   phase,
   onDealComplete,
+  onSelectTrump,
 }) {
   const [flyingCards, setFlyingCards] = useState([]);
   const [dealtCards, setDealtCards] = useState({ N: [], E: [], S: [], W: [] });
@@ -631,8 +641,13 @@ function DealingLayer({
           bidderId && (seatByDir[dir]?.id || seatByDir[dir]?.playerId) === bidderId;
         const showTrumpCaption =
           phase === "trump-selection" && isBidderDir && playerId === bidderId;
+        const allowTrumpClick = phase === "trump-selection" && isBidderDir && playerId === bidderId;
         return (
-          <div key={dir} className={`deal-zone deal-zone--${dir.toLowerCase()}`}>
+          <div
+            key={dir}
+            className={`deal-zone deal-zone--${dir.toLowerCase()}`}
+            style={allowTrumpClick ? { pointerEvents: "auto" } : undefined}
+          >
             {showTrumpCaption && <div className="deal-caption">Select Trump</div>}
             <div className="deal-cards">
               {cards.map((card, idx) => {
@@ -640,11 +655,30 @@ function DealingLayer({
                 const label = showFace
                   ? `${card.rank ?? "?"} ${card.suit ? suitSymbol(card.suit) : ""}`.trim()
                   : "";
+                const clickable = allowTrumpClick && !!card;
+                const className = [
+                  "deal-card-static",
+                  showFace ? "deal-card-face" : "deal-card-back",
+                  clickable ? "deal-card-clickable" : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ");
+
+                if (clickable) {
+                  return (
+                    <button
+                      key={`${dir}-${idx}`}
+                      type="button"
+                      className={className}
+                      onClick={() => onSelectTrump?.(card)}
+                    >
+                      {showFace && <span className="deal-card-label">{label}</span>}
+                    </button>
+                  );
+                }
+
                 return (
-                  <div
-                    key={`${dir}-${idx}`}
-                    className={`deal-card-static ${showFace ? "deal-card-face" : "deal-card-back"}`}
-                  >
+                  <div key={`${dir}-${idx}`} className={className}>
                     {showFace && <span className="deal-card-label">{label}</span>}
                   </div>
                 );
