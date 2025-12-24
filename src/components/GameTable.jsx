@@ -191,6 +191,12 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
     }
     return [];
   }, [phase, me?.hand]);
+  const myDealCardsSecondPass = useMemo(() => {
+    if (phase === "second-pass-bidding" && Array.isArray(me?.hand)) {
+      return me.hand.slice(4, 8);
+    }
+    return [];
+  }, [phase, me?.hand]);
   const dealKeyRef = useRef(null);
   const [dealSequence, setDealSequence] = useState([]);
   const showDealing = dealSequence.length > 0;
@@ -256,7 +262,7 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
     if (Number.isInteger(round?.dealerIndex)) return round.dealerIndex;
     return 0;
   })();
-  const buildDealSequence = () => {
+  const buildDealSequence = (passIndex = 0) => {
     const cardDelay = 120;
     const seatGap = 200;
     const roundId = round?.id || "round";
@@ -269,9 +275,13 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
       const dir = directionFromSeatIndex(seatIdx) || "S";
       for (let cardIdx = 0; cardIdx < 4; cardIdx++) {
         const delay = seatDelay + cardIdx * cardDelay;
-        const card = pid === playerId ? myDealCards[cardIdx] || null : null;
+        const handOffset = passIndex === 0 ? 0 : 4;
+        const card =
+          pid === playerId
+            ? (passIndex === 0 ? myDealCards : myDealCardsSecondPass)[cardIdx] || null
+            : null;
         seq.push({
-          id: `${roundId}-deal-${seatIdx}-${cardIdx}`,
+          id: `${roundId}-deal-pass${passIndex}-${seatIdx}-${cardIdx}`,
           playerId: pid,
           dir,
           seatIndex: seatIdx,
@@ -284,12 +294,22 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
     return seq;
   };
   useEffect(() => {
-    const key = round?.id ? `${round.id}-first-pass-bidding` : null;
-    if (phase === "first-pass-bidding" && key) {
+    const key =
+      round?.id && (phase === "first-pass-bidding" || phase === "second-pass-bidding")
+        ? `${round.id}-${phase}`
+        : null;
+    if (key && phase === "first-pass-bidding") {
       if (dealKeyRef.current !== key) {
         dealKeyRef.current = key;
-        setDealSequence(buildDealSequence());
+        setDealSequence(buildDealSequence(0));
       }
+    } else if (key && phase === "second-pass-bidding") {
+      if (dealKeyRef.current !== key) {
+        dealKeyRef.current = key;
+        setDealSequence(buildDealSequence(1));
+      }
+    } else {
+      setDealSequence([]);
     }
   }, [
     phase,
@@ -300,6 +320,7 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
     offset,
     players.length,
     myDealCards,
+    myDealCardsSecondPass,
   ]);
 
   const humanizePhase = (value) => {
@@ -401,6 +422,7 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
             bidderId={bidding?.bidderId}
             phase={phase}
             myDealCards={myDealCards}
+            roundId={round?.id}
             onDealComplete={handleDealComplete}
             placedTrump={placedTrump}
             onPlaceTrump={(data) => setPlacedTrump(data)}
@@ -586,10 +608,12 @@ function DealingLayer({
   playerId,
   bidderId,
   phase,
+  roundId,
   onDealComplete,
   onSelectTrump,
   onPlaceTrump,
   placedTrump,
+  trumpHiddenId,
 }) {
   const [flyingCards, setFlyingCards] = useState([]);
   const [dealtCards, setDealtCards] = useState({ N: [], E: [], S: [], W: [] });
@@ -598,6 +622,7 @@ function DealingLayer({
   const remainingRef = useRef(0);
   const completedRunRef = useRef(null);
   const onDealCompleteRef = useRef(onDealComplete);
+  const lastTrumpKeyRef = useRef(null);
   useEffect(() => {
     onDealCompleteRef.current = onDealComplete;
   }, [onDealComplete]);
@@ -606,7 +631,14 @@ function DealingLayer({
     show ||
     flyingCards.length > 0 ||
     placedTrump ||
+    trumpHiddenId ||
     Object.values(dealtCards).some((arr) => arr.length > 0);
+
+  useEffect(() => {
+    setDealtCards({ N: [], E: [], S: [], W: [] });
+    setFlyingCards([]);
+    lastTrumpKeyRef.current = null;
+  }, [roundId]);
 
   useEffect(() => {
     timersRef.current.forEach(clearTimeout);
@@ -617,11 +649,9 @@ function DealingLayer({
     completedRunRef.current = null;
     if (!show || !hasSequence) {
       setFlyingCards([]);
-      setDealtCards({ N: [], E: [], S: [], W: [] });
       return undefined;
     }
     setFlyingCards([]);
-    setDealtCards({ N: [], E: [], S: [], W: [] });
     const flightMs = DEAL_CARD_DURATION;
     sequence.forEach((item) => {
       const startTimer = setTimeout(() => {
@@ -633,8 +663,8 @@ function DealingLayer({
           setDealtCards((prev) => {
             const updated = { ...prev };
             const dirCards = [...(updated[item.dir] || [])];
-            if (dirCards.length < 4) dirCards.push(item.card || null);
-            updated[item.dir] = dirCards.slice(0, 4);
+            dirCards.push(item.card || null);
+            updated[item.dir] = dirCards.slice(0, 8);
             return updated;
           });
           remainingRef.current -= 1;
@@ -695,11 +725,11 @@ function DealingLayer({
         const trumpPlacedHere =
           placedTrump && placedTrump.dir === dir && placedTrump.ownerId === bidderId;
         const trumpCardId = placedTrump?.card?.id || placedTrump?.hiddenCardId || null;
-        const renderCards =
-        placedTrump && isBidderDir
-          ? (isYouDir && trumpCardId
-              ? cards.filter((c) => c?.id !== trumpCardId)
-              : cards.slice(0, Math.max(0, cards.length - 1)))
+        const shouldHideForTrump = placedTrump && isBidderDir && phase === "trump-selection";
+        const renderCards = shouldHideForTrump
+          ? isYouDir && trumpCardId
+            ? cards.filter((c) => c?.id !== trumpCardId)
+            : cards.slice(0, Math.max(0, cards.length - 1))
           : cards;
         return (
           <div
@@ -710,7 +740,7 @@ function DealingLayer({
             {showTrumpCaption && <div className="deal-caption">Select Trump</div>}
             <div className="deal-cards">
               {renderCards.map((card, idx) => {
-                const showFace = isYouDir && !!card;
+                const showFace = isYouDir;
                 const [suitFromId, rankFromId] = (card?.id || "").split("-");
                 const resolvedRank = card?.rank || rankFromId || "?";
                 const resolvedSuit = card?.suit || suitFromId || card?.suit;

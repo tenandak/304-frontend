@@ -174,7 +174,7 @@
 .deal-zone--east,
 .deal-zone--e {
   top: 50%;
-  left: 86%;
+  left: 94%;
   transform: translate(-110%, -50%) rotate(90deg);
   transform-origin: center;
 }
@@ -182,14 +182,14 @@
 .deal-zone--west,
 .deal-zone--w {
   top: 50%;
-  right: 86%;
+  right: 94%;
   transform: translate(110%, -50%) rotate(-90deg);
   transform-origin: center;
 }
 
 .deal-card-static {
-  width: 56px;
-  height: 70px;
+  width: 45px;
+  height: 60px;
   border-radius: 8px;
   border: 1px solid rgba(255, 255, 255, 0.18);
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.28);
