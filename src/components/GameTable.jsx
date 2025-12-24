@@ -695,6 +695,12 @@ function DealingLayer({
         const trumpPlacedHere =
           placedTrump && placedTrump.dir === dir && placedTrump.ownerId === bidderId;
         const trumpCardId = placedTrump?.card?.id || placedTrump?.hiddenCardId || null;
+        const renderCards =
+        placedTrump && isBidderDir
+          ? (isYouDir && trumpCardId
+              ? cards.filter((c) => c?.id !== trumpCardId)
+              : cards.slice(0, Math.max(0, cards.length - 1)))
+          : cards;
         return (
           <div
             key={dir}
@@ -703,14 +709,7 @@ function DealingLayer({
           >
             {showTrumpCaption && <div className="deal-caption">Select Trump</div>}
             <div className="deal-cards">
-              {cards.map((card, idx) => {
-                if (trumpPlacedHere) {
-                  if (trumpCardId) {
-                    if (card?.id === trumpCardId) return null;
-                  } else if (idx === 3) {
-                    return null;
-                  }
-                }
+              {renderCards.map((card, idx) => {
                 const showFace = isYouDir && !!card;
                 const [suitFromId, rankFromId] = (card?.id || "").split("-");
                 const resolvedRank = card?.rank || rankFromId || "?";
