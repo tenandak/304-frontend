@@ -253,7 +253,6 @@
   place-items: center;
   left: var(--from-left);
   top: var(--from-top);
-  transform: translate(-50%, -50%);
   animation: trump-fly 0.5s ease forwards;
   z-index: 8;
 }
@@ -272,8 +271,19 @@
     left: var(--to-left);
     top: var(--to-top);
     opacity: 1;
-    transform: translate(-50%, -50%) scale(1);
   }
+}
+
+.trump-static {
+  position: absolute;
+  width: 56px;
+  height: 70px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.35);
+  display: grid;
+  place-items: center;
+  z-index: 7;
 }
 
 .deal-caption {

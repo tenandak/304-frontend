@@ -13,10 +13,10 @@ const DEAL_ZONE_POSITIONS = {
 };
 
 const TRUMP_TARGET_POSITIONS = {
-  N: { left: "50%", top: "18%", transform: "translate(80px, 20%)" },
-  S: { left: "60%", top: "90%", transform: "translate(80px, -120%)" },
-  E: { left: "86%", top: "50%", transform: "translate(32px, -50%)" },
-  W: { left: "14%", top: "50%", transform: "translate(120px, -50%)" },
+  N: { left: "27%", top: "1%", transform: "translate(80px, 20%)" },
+  S: { left: "52%", top: "102%", transform: "translate(80px, -120%)" },
+  E: { left: "86%", top: "30%", transform: "translate(32px, -50%) rotate(90deg)" },
+  W: { left: "0%", top: "32%", transform: "translate(120px, -50%) rotate(-90deg)" },
 };
 
 const DEAL_CARD_DURATION = 620;
@@ -195,6 +195,19 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
   const [dealSequence, setDealSequence] = useState([]);
   const showDealing = dealSequence.length > 0;
   const [placedTrump, setPlacedTrump] = useState(null);
+  const lastTrumpKeyRef = useRef(null);
+  useEffect(() => {
+    const hiddenId = round?.trump?.hiddenCardId;
+    const rid = round?.id || "round";
+    const bidId = bidding?.bidderId || null;
+    if (!hiddenId || !bidId) return;
+    const dirIdx = uiSeats.findIndex((p) => (p?.id || p?.playerId) === bidId);
+    const bidderDir = ["N", "E", "S", "W"][dirIdx] || "S";
+    const key = `${rid}:${hiddenId}`;
+    if (lastTrumpKeyRef.current === key && placedTrump?.key === key) return;
+    lastTrumpKeyRef.current = key;
+    setPlacedTrump({ card: { id: hiddenId }, dir: bidderDir, ownerId: bidId, key });
+  }, [round?.id, round?.trump?.hiddenCardId, bidding?.bidderId, uiSeats, placedTrump?.key]);
   useEffect(() => {
     if (phase === "first-pass-bidding" && showDealing) {
       setDealFinished(false);
@@ -650,10 +663,12 @@ function DealingLayer({
           faceUp: placedTrump.ownerId === playerId,
           label: (() => {
             if (placedTrump.ownerId !== playerId) return "";
-            const [suitFromId, rankFromId] = (placedTrump.card?.id || "").split("-");
-            const rank = placedTrump.card?.rank || rankFromId || "?";
+            if (!placedTrump.card?.id) return "";
+            const [suitFromId, rankFromId] = placedTrump.card.id.split("-");
+            if (!suitFromId || !rankFromId) return "";
+            const rank = placedTrump.card?.rank || rankFromId;
             const suit = placedTrump.card?.suit || suitFromId || placedTrump.card?.suit;
-            return `${rank} ${suit ? suitSymbol(suit) : ""}`.trim();
+            return rank && suit ? `${rank} ${suitSymbol(suit)}` : "";
           })(),
         }
       : null;
@@ -679,6 +694,7 @@ function DealingLayer({
         const allowTrumpClick = phase === "trump-selection" && isBidderDir && playerId === bidderId;
         const trumpPlacedHere =
           placedTrump && placedTrump.dir === dir && placedTrump.ownerId === bidderId;
+        const trumpCardId = placedTrump?.card?.id || placedTrump?.hiddenCardId || null;
         return (
           <div
             key={dir}
@@ -688,15 +704,21 @@ function DealingLayer({
             {showTrumpCaption && <div className="deal-caption">Select Trump</div>}
             <div className="deal-cards">
               {cards.map((card, idx) => {
-                const isTrumpCard = trumpPlacedHere && card?.id === placedTrump?.card?.id;
-                if (isTrumpCard) return null;
+                if (trumpPlacedHere) {
+                  if (trumpCardId) {
+                    if (card?.id === trumpCardId) return null;
+                  } else if (idx === 3) {
+                    return null;
+                  }
+                }
                 const showFace = isYouDir && !!card;
                 const [suitFromId, rankFromId] = (card?.id || "").split("-");
                 const resolvedRank = card?.rank || rankFromId || "?";
                 const resolvedSuit = card?.suit || suitFromId || card?.suit;
-                const label = showFace
-                  ? `${resolvedRank} ${resolvedSuit ? suitSymbol(resolvedSuit) : ""}`.trim()
-                  : "";
+                const label =
+                  showFace && resolvedSuit && resolvedRank
+                    ? `${resolvedRank} ${suitSymbol(resolvedSuit)}`
+                    : "";
                 const clickable = allowTrumpClick && !!card;
                 const className = [
                   "deal-card-static",
@@ -713,7 +735,6 @@ function DealingLayer({
                       type="button"
                       className={className}
                       onClick={() => {
-                        onPlaceTrump?.({ card, dir, ownerId: bidderId });
                         onSelectTrump?.(card);
                       }}
                     >
@@ -740,7 +761,7 @@ function DealingLayer({
             "--from-top": trumpAnim.from.top,
             "--to-left": trumpAnim.to.left,
             "--to-top": trumpAnim.to.top,
-            transform: trumpAnim.to.transform,
+            transform: trumpAnim.to.transform || "translate(-50%, -50%)",
           }}
         >
           {trumpAnim.faceUp ? <span className="deal-card-label">{trumpAnim.label}</span> : null}
