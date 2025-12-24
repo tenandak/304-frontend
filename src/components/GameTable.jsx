@@ -726,11 +726,19 @@ function DealingLayer({
           placedTrump && placedTrump.dir === dir && placedTrump.ownerId === bidderId;
         const trumpCardId = placedTrump?.card?.id || placedTrump?.hiddenCardId || null;
         const shouldHideForTrump = placedTrump && isBidderDir && phase === "trump-selection";
-        const renderCards = shouldHideForTrump
+        let renderCards = shouldHideForTrump
           ? isYouDir && trumpCardId
             ? cards.filter((c) => c?.id !== trumpCardId)
             : cards.slice(0, Math.max(0, cards.length - 1))
           : cards;
+        if (
+          isBidderDir &&
+          phase === "second-pass-bidding" &&
+          renderCards.length === 8 &&
+          renderCards[7] == null
+        ) {
+          renderCards = renderCards.slice(0, 7);
+        }
         return (
           <div
             key={dir}
