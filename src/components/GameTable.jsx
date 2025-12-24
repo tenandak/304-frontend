@@ -193,7 +193,11 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
   }, [phase, me?.hand]);
   const myDealCardsSecondPass = useMemo(() => {
     if (phase === "second-pass-bidding" && Array.isArray(me?.hand)) {
-      return me.hand.slice(4, 8);
+      if (isTrumpOwner) {
+        return me.hand.slice(3, 8);
+      } else {
+        return me.hand.slice(4, 8);
+      }
     }
     return [];
   }, [phase, me?.hand]);
@@ -662,8 +666,14 @@ function DealingLayer({
           setFlyingCards((prev) => prev.filter((card) => card.id !== item.id));
           setDealtCards((prev) => {
             const updated = { ...prev };
-            const dirCards = [...(updated[item.dir] || [])];
+            let dirCards = [...(updated[item.dir] || [])];
+            if (phase === "second-pass-bidding") {
+              dirCards = dirCards.filter((c) => {
+                return c?.id !== placedTrump.card.id;
+              });
+            }
             dirCards.push(item.card || null);
+            console.log("UPDATED DIR CARDS", dirCards);
             updated[item.dir] = dirCards.slice(0, 8);
             return updated;
           });
