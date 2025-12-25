@@ -80,21 +80,23 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
   const isMyTrickTurn = trickTurnPlayerId === playerId;
   const faceDownPlayableCardIds =
     trickOptions.faceDownPlayableCardIdsByPlayerId?.[playerId] || [];
-  const playableCardIds =
-    trickOptions.playableCardIdsByPlayerId?.[playerId] ||
-    faceDownPlayableCardIds ||
-    [];
+  const explicitPlayableCardIds =
+    trickOptions.playableCardIdsByPlayerId?.[playerId] || [];
   const myTrickActions =
     trickOptions.allowedActionsByPlayerId?.[playerId] || [];
   const canPlayFaceDown = myTrickActions.includes("playCardFaceDown");
   const [playFaceDown, setPlayFaceDown] = useState(false);
   useEffect(() => {
-    if (playableCardIds.length === 0 && faceDownPlayableCardIds.length > 0) {
+    if (explicitPlayableCardIds.length === 0 && faceDownPlayableCardIds.length > 0) {
       setPlayFaceDown(true);
     } else if (faceDownPlayableCardIds.length === 0) {
       setPlayFaceDown(false);
     }
-  }, [playableCardIds, faceDownPlayableCardIds]);
+  }, [explicitPlayableCardIds, faceDownPlayableCardIds]);
+  const fallbackHandIds =
+    Array.isArray(me?.hand) && isMyTrickTurn ? me.hand.map((c) => c.id) : [];
+  const playableCardIds =
+    explicitPlayableCardIds.length > 0 ? explicitPlayableCardIds : fallbackHandIds;
   const currentTrick =
     round?.tricks?.find((t) => t.index === round?.trickIndex) ||
     round?.tricks?.[round?.tricks?.length - 1] ||
@@ -424,6 +426,9 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
             uiSeats={uiSeats}
             playerId={playerId}
             bidderId={bidding?.bidderId}
+            playableCardIds={playableCardIds}
+            isMyTrickTurn={isMyTrickTurn}
+            playFaceDown={playFaceDown}
             phase={phase}
             myDealCards={myDealCards}
             roundId={round?.id}
@@ -436,6 +441,12 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
                 payload: { suit: card.suit, cardId: card.id },
               });
             }}
+            onPlayCard={({ cardId, faceDown }) =>
+              onSendAction({
+                type: "PLAY_CARD",
+                payload: { cardId, faceDown },
+              })
+            }
           />
         </div>
       </div>
@@ -580,6 +591,57 @@ function GameTable({ roomId, playerId, gameState, onSendAction }) {
           </div>
         )} */}
       </div>
+      {phase?.startsWith("tricks") && (
+        <div className="hand-dock">
+          <div className="hand-label">Your Hand</div>
+          <div className="hand-scroll">
+            {canPlayFaceDown && (
+              <div className="inline-actions">
+                <label className="meta">
+                  <input
+                    type="checkbox"
+                    checked={playFaceDown}
+                    onChange={() => setPlayFaceDown((v) => !v)}
+                  />{" "}
+                  Play face down
+                </label>
+              </div>
+            )}
+            <div className="hand-row">
+              {(me?.hand || []).map((card) => {
+                const playable = modePlayableIds.includes(card.id);
+                const disabled = !playable || !isMyTrickTurn;
+                const classes = [
+                  "hand-card",
+                  playable ? "playable" : "",
+                  disabled ? "disabled" : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ");
+                return (
+                  <button
+                    key={card.id}
+                    type="button"
+                    className={classes}
+                    onClick={() =>
+                      !disabled &&
+                      onSendAction({
+                        type: "PLAY_CARD",
+                        payload: { cardId: card.id, faceDown: playFaceDown },
+                      })
+                    }
+                    disabled={disabled}
+                    title={`${card.rank} ${suitSymbol(card.suit)}`}
+                  >
+                    <span className="hand-rank">{card.rank}</span>
+                    <span className="hand-suit">{suitSymbol(card.suit)}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
       <Scoreboard
         north={uiSeats[0]}
         south={uiSeats[2]}
@@ -611,10 +673,14 @@ function DealingLayer({
   uiSeats,
   playerId,
   bidderId,
+  playableCardIds = [],
+  isMyTrickTurn = false,
+  playFaceDown = false,
   phase,
   roundId,
   onDealComplete,
   onSelectTrump,
+  onPlayCard,
   onPlaceTrump,
   placedTrump,
   trumpHiddenId,
@@ -626,6 +692,7 @@ function DealingLayer({
   const remainingRef = useRef(0);
   const completedRunRef = useRef(null);
   const onDealCompleteRef = useRef(onDealComplete);
+  const [deckHidden, setDeckHidden] = useState(false);
   const lastTrumpKeyRef = useRef(null);
   useEffect(() => {
     onDealCompleteRef.current = onDealComplete;
@@ -642,6 +709,7 @@ function DealingLayer({
     setDealtCards({ N: [], E: [], S: [], W: [] });
     setFlyingCards([]);
     lastTrumpKeyRef.current = null;
+    setDeckHidden(false);
   }, [roundId]);
 
   useEffect(() => {
@@ -667,19 +735,19 @@ function DealingLayer({
           setDealtCards((prev) => {
             const updated = { ...prev };
             let dirCards = [...(updated[item.dir] || [])];
-            if (phase === "second-pass-bidding") {
-              dirCards = dirCards.filter((c) => {
-                return c?.id !== placedTrump.card.id;
-              });
+            if (phase === "second-pass-bidding" && placedTrump?.card?.id) {
+              dirCards = dirCards.filter((c) => c?.id !== placedTrump.card.id);
             }
             dirCards.push(item.card || null);
-            console.log("UPDATED DIR CARDS", dirCards);
             updated[item.dir] = dirCards.slice(0, 8);
             return updated;
           });
           remainingRef.current -= 1;
           if (remainingRef.current === 0 && completedRunRef.current !== runId) {
             completedRunRef.current = runId;
+            if (phase === "second-pass-bidding") {
+              setDeckHidden(true);
+            }
             onDealCompleteRef.current?.();
           }
         }, flightMs);
@@ -720,15 +788,19 @@ function DealingLayer({
     W: uiSeats[3],
   };
   const deckOrigin = DECK_ORIGIN;
+  const showDeck =
+    !deckHidden &&
+    (show || flyingCards.length > 0 || phase !== "second-pass-bidding");
 
   return (
     <div className="table-overlay" aria-hidden="true">
-      <DeckStack />
+      {showDeck && <DeckStack />}
       {["N", "E", "S", "W"].map((dir) => {
         const cards = dealtCards[dir] || [];
         const isYouDir = (seatByDir[dir]?.id || seatByDir[dir]?.playerId) === playerId;
         const isBidderDir =
           bidderId && (seatByDir[dir]?.id || seatByDir[dir]?.playerId) === bidderId;
+        const allowTrickPlay = phase?.startsWith("tricks") && isYouDir && isMyTrickTurn;
         const showTrumpCaption =
           phase === "trump-selection" && isBidderDir && playerId === bidderId;
         const allowTrumpClick = phase === "trump-selection" && isBidderDir && playerId === bidderId;
@@ -751,14 +823,14 @@ function DealingLayer({
         }
         return (
           <div
-            key={dir}
-            className={`deal-zone deal-zone--${dir.toLowerCase()}`}
-            style={allowTrumpClick ? { pointerEvents: "auto" } : undefined}
-          >
-            {showTrumpCaption && <div className="deal-caption">Select Trump</div>}
-            <div className="deal-cards">
-              {renderCards.map((card, idx) => {
-                const showFace = isYouDir;
+          key={dir}
+          className={`deal-zone deal-zone--${dir.toLowerCase()}`}
+            style={allowTrumpClick || allowTrickPlay ? { pointerEvents: "auto" } : undefined}
+        >
+          {showTrumpCaption && <div className="deal-caption">Select Trump</div>}
+          <div className="deal-cards">
+            {renderCards.map((card, idx) => {
+              const showFace = isYouDir;
                 const [suitFromId, rankFromId] = (card?.id || "").split("-");
                 const resolvedRank = card?.rank || rankFromId || "?";
                 const resolvedSuit = card?.suit || suitFromId || card?.suit;
@@ -766,11 +838,13 @@ function DealingLayer({
                   showFace && resolvedSuit && resolvedRank
                     ? `${resolvedRank} ${suitSymbol(resolvedSuit)}`
                     : "";
-                const clickable = allowTrumpClick && !!card;
+                const playable = allowTrickPlay && !!card && playableCardIds.includes(card.id);
+                const clickable = (allowTrumpClick && !!card) || playable;
                 const className = [
                   "deal-card-static",
                   showFace ? "deal-card-face" : "deal-card-back",
                   clickable ? "deal-card-clickable" : "",
+                  playable ? "playable" : "",
                 ]
                   .filter(Boolean)
                   .join(" ");
@@ -782,7 +856,11 @@ function DealingLayer({
                       type="button"
                       className={className}
                       onClick={() => {
-                        onSelectTrump?.(card);
+                        if (allowTrumpClick) {
+                          onSelectTrump?.(card);
+                        } else if (playable) {
+                          onPlayCard?.({ cardId: card.id, faceDown: playFaceDown });
+                        }
                       }}
                     >
                       {showFace && <span className="deal-card-label">{label}</span>}
